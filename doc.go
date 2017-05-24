@@ -3,20 +3,28 @@
 
 
 	FEATURE:
-	create
-	read
+	Create
+	Delete
+	Update
+	Read
 	SQL查询返回map[string]string
+	SQL查询返回map[string]interface{}
+	SQL将查询的结构映射到结构体中
+	SQL将查询的结构映射到结构体数组中
 
 	TODO:
-	update
-	delete
 	mysql连接池
-	SQL查询返回map[string]interface{}
+	
 
 
 	PLAN:
 	支持多数据库
 	支持分表分库
+
+
+
+	状态
+
 
 */
 package crud

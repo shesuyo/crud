@@ -38,14 +38,16 @@ func init() {
 }
 
 type safeMap struct {
-	m map[string]string
-	l *sync.RWMutex
+	m  map[string]string
+	rm map[string]string
+	l  *sync.RWMutex
 }
 
 func (s *safeMap) Set(key string, value string) {
 	s.l.Lock()
 	defer s.l.Unlock()
 	s.m[key] = value
+	s.rm[value] = key
 }
 
 func (s *safeMap) Get(key string) string {
@@ -54,8 +56,12 @@ func (s *safeMap) Get(key string) string {
 	return s.m[key]
 }
 
+func (s *safeMap) RGet(key string) string {
+	return s.rm[key]
+}
+
 func newSafeMap() *safeMap {
-	return &safeMap{l: new(sync.RWMutex), m: make(map[string]string)}
+	return &safeMap{l: new(sync.RWMutex), m: make(map[string]string), rm: make(map[string]string)}
 }
 
 var smap = newSafeMap()
@@ -66,6 +72,10 @@ const (
 	lower strCase = false
 	upper strCase = true
 )
+
+func ToStructName(name string) string {
+	return smap.RGet(name)
+}
 
 // ToDBName convert string to db name
 func ToDBName(name string) string {
@@ -261,7 +271,7 @@ func ksvs(m map[string]interface{}, keyTail ...string) ([]string, []interface{})
 		kt = keyTail[0]
 	}
 	for k, v := range m {
-		ks = append(ks, "`"+k+"`"+kt)
+		ks = append(ks, " `"+k+"`"+kt)
 		vs = append(vs, v)
 	}
 	return ks, vs

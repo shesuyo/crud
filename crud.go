@@ -9,12 +9,13 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/go-sql-driver/mysql" //底层使用，目前只支持mysql数据库。
 )
 
+// 错误
 var (
-	ExecError = errors.New("执行错误")
-	ArgsError = errors.New("参数错误")
+	ErrExec = errors.New("执行错误")
+	ErrArgs = errors.New("参数错误")
 )
 
 type CRUDRender func(w http.ResponseWriter, err error, data ...interface{})
@@ -69,11 +70,11 @@ func (this *CRUD) ExecSuccessRender(w http.ResponseWriter) {
 }
 
 func (this *CRUD) argsErrorRender(w http.ResponseWriter) {
-	this.render(w, ArgsError)
+	this.render(w, ErrArgs)
 }
 
 func (this *CRUD) execErrorRender(w http.ResponseWriter) {
-	this.render(w, ExecError)
+	this.render(w, ErrExec)
 }
 
 func (this *CRUD) dataRender(w http.ResponseWriter, data interface{}) {
@@ -152,11 +153,14 @@ func (this *CRUD) Create(v interface{}, w http.ResponseWriter, r *http.Request) 
 	values := []string{}
 	args := []interface{}{}
 	cols := this.getColums(tableName)
-	if cols.HaveColumn("create_at") {
-		time.Now().Format("2006-01-02 15:04:05")
+	if cols.HaveColumn("created_at") {
+		m["created_at"] = time.Now().Format(TimeFormat)
 	}
-	if cols.HaveColumn("is_delete") {
-		m["is_delete"] = 0
+	if cols.HaveColumn("is_deleted") {
+		m["is_deleted"] = 0
+	}
+	if cols.HaveColumn("updated_at") {
+		m["updated_at"] = time.Now().Format(TimeFormat)
 	}
 	for k, v := range m {
 		names = append(names, "`"+k+"`")
@@ -170,6 +174,7 @@ func (this *CRUD) Create(v interface{}, w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	m["id"] = id
+	delete(m, "is_deleted")
 	this.dataRender(w, m)
 }
 
@@ -223,7 +228,9 @@ func (this *CRUD) Read(v interface{}, w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-
+	if this.tableColumns[tableName].HaveColumn("is_deleted") {
+		m["is_deleted"] = "0"
+	}
 	if ctn == "" {
 		ks, vs := ksvs(m, " = ? ")
 		data := this.RowSQL(fmt.Sprintf("SELECT * FROM `%s` WHERE %s", tableName, strings.Join(ks, "AND")), vs...).RawsMapInterface()
@@ -236,7 +243,10 @@ func (this *CRUD) Read(v interface{}, w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+var TimeFormat = "2006-01-02 15:04:05"
+
 func (this *CRUD) Update(v interface{}, w http.ResponseWriter, r *http.Request) {
+	fmt.Println(r.Form)
 	tableName := getStructDBName(v)
 	m := parseRequest(v, r, R)
 	if m == nil || len(m) == 0 {
@@ -247,9 +257,12 @@ func (this *CRUD) Update(v interface{}, w http.ResponseWriter, r *http.Request) 
 	//	现在只支持根据ID进行更新
 	id := m["id"]
 	delete(m, "id")
+	if this.tableColumns[tableName].HaveColumn("updated_at") {
+		m["updated_at"] = time.Now().Format(TimeFormat)
+	}
 	ks, vs := ksvs(m, " = ? ")
 	vs = append(vs, id)
-	_, err := this.Exec(fmt.Sprintf("UPDATE `%s` SET %s WHERE %s = ?", tableName, strings.Join(ks, "AND"), "id"), vs...).Effected()
+	_, err := this.Exec(fmt.Sprintf("UPDATE `%s` SET %s WHERE %s = ?", tableName, strings.Join(ks, ","), "id"), vs...).Effected()
 	if err != nil {
 		this.execErrorRender(w)
 		return
@@ -261,6 +274,14 @@ func (this *CRUD) Delete(v interface{}, w http.ResponseWriter, r *http.Request) 
 	m := parseRequest(v, r, R)
 	if m == nil || len(m) == 0 {
 		this.argsErrorRender(w)
+		return
+	}
+	if this.tableColumns[tableName].HaveColumn("is_deleted") {
+		if this.tableColumns[tableName].HaveColumn("deleted_at") {
+			r.Form["deleted_at"] = []string{time.Now().Format(TimeFormat)}
+		}
+		r.Form["is_deleted"] = []string{"1"}
+		this.Update(v, w, r)
 		return
 	}
 	//	现在只支持根据ID进行删除
@@ -281,6 +302,15 @@ func (this *CRUD) Find(v interface{}, args ...interface{}) {
 		return
 	}
 
+	if len(args) > 0 {
+		if sql, ok := args[0].(string); ok {
+			if strings.Contains(args[0].(string), "SELECT") {
+				this.RowSQL(sql, args[1:]...).Find(v)
+				return
+			}
+		}
+	}
+
 	tableName := ""
 	if rv.Elem().Kind() == reflect.Slice {
 		tableName = ToDBName(rv.Elem().Type().Elem().Name())
@@ -288,19 +318,119 @@ func (this *CRUD) Find(v interface{}, args ...interface{}) {
 		tableName = ToDBName(rv.Type().Elem().Name())
 	}
 
-	// 如果传入
+	where := " WHERE 1 "
 
 	if len(args) == 1 {
-		this.RowSQL(fmt.Sprintf("SELECT * FROM `%s` WHERE `id` = ?", tableName), args[0]).Find(v)
+		where += " AND id = ? "
+		args = append(args, args[0])
 	} else if len(args) > 1 {
-		this.RowSQL(fmt.Sprintf("SELECT * FROM `%s` WHERE %s", tableName, args[0]), args[1:]...).Find(v)
+		where += args[0].(string)
 	} else {
-		this.RowSQL(fmt.Sprintf("SELECT * FROM `%s`", tableName)).Find(v)
+		args = append(args, nil)
 	}
+
+	if this.tableColumns[tableName].HaveColumn("is_deleted") {
+		where += " AND is_deleted = 0"
+	}
+
+	this.RowSQL(fmt.Sprintf("SELECT * FROM `%s` %s", tableName, where), args[1:]...).Find(v)
 }
 
-//在需要的时候将自动查询结构体子结构体
+/*
+	根据belong查询master
+	master是要查找的，belong是已知的。
+*/
+func (this *CRUD) connection(target string, got reflect.Value) ([]interface{}, bool) {
+	//"SELECT `master`.* FROM `master` WHERE `belong_id` = ? ", belongID
+	//"SELECT `master`.* FROM `master` LEFT JOIN `belong` ON `master`.id = `belong`.master_id WHERE `belong`.id = ?"
+	//"SELECT `master`.* FROM `master` LEFT JOIN `belong` ON `master`.belong_id = `belong`.id WHERE `belong`.id = ?"
+	//"SELECT `master`.* FROM `master` LEFT JOIN `master_belong` ON `master_belong`.master_id = `master`.id WHERE `master_belong`.belong_id = ?", belongID
+	//"SELECT `master`.* FROM `master` LEFT JOIN `belong_master` ON `belong_master`.master_id = `master`.id WHERE `belong_master`.belong_id = ?", belongID
+	// 首先实现正常的逻辑，然后再进行所有逻辑的判断。
+
+	ttn := target                      //target table name
+	gtn := ToDBName(got.Type().Name()) // got table name
+
+	fmt.Println(ttn, gtn)
+
+	if this.tableColumns[gtn].HaveColumn(ttn + "_id") {
+		// got: question_option question_id
+		// target: question
+		// select * from question where id = question_option.question_id
+		//return this.RowSQL(fmt.Sprintf("SELECT `%s`.* FROM `%s` WHERE %s = ?", gtn, gtn, "id"), got.FieldByName(ttn+"_id").Interface())
+		return []interface{}{fmt.Sprintf("SELECT `%s`.* FROM `%s` WHERE %s = ?", gtn, gtn, "id"), got.FieldByName(ToStructName(ttn + "_id")).Interface()}, true
+	}
+
+	if this.tableColumns[ttn].HaveColumn(gtn + "_id") {
+		//got: question
+		//target:question_options
+		//select * from question_options where question.options.question_id = question.id
+		//		return this.RowSQL(fmt.Sprintf("SELECT * FROM `%s` WHERE %s = ?", ttn, gtn+"_id"), got.FieldByName("id").Interface())
+		return []interface{}{fmt.Sprintf("SELECT * FROM `%s` WHERE %s = ?", ttn, gtn+"_id"), got.FieldByName("ID").Interface()}, true
+	}
+
+	//group_section
+	//got: group
+	//target: section
+	//SELECT section.* FROM section LEFT JOIN group_section ON group_section.section_id = section.id WHERE group_section.group_id = group.id
+
+	ctn := ""
+	if this.haveTablename(ttn + "_" + gtn) {
+		ctn = ttn + "_" + gtn
+	}
+
+	if this.haveTablename(gtn + "_" + ttn) {
+		ctn = gtn + "_" + ttn
+	}
+
+	if ctn != "" {
+		if this.tableColumns[ctn].HaveColumn(gtn+"_id") && this.tableColumns[ctn].HaveColumn(ttn+"_id") {
+			//			return this.RowSQL(fmt.Sprintf("SELECT `%s`.* FROM `%s` LEFT JOIN %s ON %s.%s = %s.%s WHERE %s.%s = ?", ttn, ttn, ctn, ctn, ttn+"_id", ttn, "id", ctn, gtn+"_id"),
+			//				got.FieldByName("id").Interface())
+			return []interface{}{fmt.Sprintf("SELECT `%s`.* FROM `%s` LEFT JOIN %s ON %s.%s = %s.%s WHERE %s.%s = ?", ttn, ttn, ctn, ctn, ttn+"_id", ttn, "id", ctn, gtn+"_id"),
+				got.FieldByName("ID").Interface()}, true
+		}
+	}
+
+	return []interface{}{}, false
+}
+
+//	在需要的时候将自动查询结构体子结构体
 func (this *CRUD) FindAll(v interface{}, args ...interface{}) {
 	this.Find(v, args...)
 	//然后再查找
+	/*
+		首先实现结构体
+		//不处理指针
+
+	*/
+	rv := reflect.ValueOf(v).Elem()
+	if rv.Kind() == reflect.Struct {
+		for i := 0; i < rv.NumField(); i++ {
+			if rv.Field(i).Kind() == reflect.Struct {
+				//fmt.Println("struct:", rv.Field(i).Type().Name())
+				// member feedback
+				// dbn := ToDBName(rv.Field(i).Type().Name())
+				fmt.Println(ToDBName(rv.Field(i).Type().Name()))
+				con, ok := this.connection(ToDBName(rv.Field(i).Type().Name()), rv)
+				if ok {
+					this.FindAll(rv.Field(i).Addr().Interface(), con...)
+				}
+
+				//this.FindAll(rv.Field(i).Addr().Interface())
+			}
+			if rv.Field(i).Kind() == reflect.Slice {
+				con, ok := this.connection(ToDBName(rv.Field(i).Type().Elem().Name()), rv)
+				if ok {
+					this.FindAll(rv.Field(i).Addr().Interface(), con...)
+				}
+
+				//fmt.Println("slice:", rv.Field(i).Type().Elem().Name())
+				//this.FindAll(rv.Field(i).Addr().Interface())
+			}
+		}
+	}
+
+	//然后再实现Slice
+
 }
