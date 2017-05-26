@@ -189,10 +189,10 @@ func (this *CRUD) Read(v interface{}, w http.ResponseWriter, r *http.Request) {
 	//	处理翻页的问题
 	//	首先判断这个里面有没有这个字段
 	m := parseRequest(v, r, R)
-	if m == nil || len(m) == 0 {
-		this.argsErrorRender(w)
-		return
-	}
+	//	if m == nil || len(m) == 0 {
+	//		this.argsErrorRender(w)
+	//		return
+	//	}
 	//	看一下是不是其他表关联查找
 	tableName := getStructDBName(v)
 	cols := this.getColums(tableName)
@@ -200,7 +200,6 @@ func (this *CRUD) Read(v interface{}, w http.ResponseWriter, r *http.Request) {
 	//fk := ""
 	//var fkv interface{}
 	for k, _ := range m {
-		this.X("检查表" + k)
 		if !cols.HaveColumn(k) {
 			if strings.Contains(k, "_id") {
 				atn := strings.TrimRight(k, "_id") //another table name
@@ -232,9 +231,15 @@ func (this *CRUD) Read(v interface{}, w http.ResponseWriter, r *http.Request) {
 		m["is_deleted"] = "0"
 	}
 	if ctn == "" {
-		ks, vs := ksvs(m, " = ? ")
-		data := this.RowSQL(fmt.Sprintf("SELECT * FROM `%s` WHERE %s", tableName, strings.Join(ks, "AND")), vs...).RawsMapInterface()
-		this.dataRender(w, data)
+		//如果没有设置ID，则查找所有的。
+		if m == nil || len(m) == 0 {
+			data := this.RowSQL(fmt.Sprintf("SELECT * FROM `%s`", tableName)).RawsMapInterface()
+			this.dataRender(w, data)
+		} else {
+			ks, vs := ksvs(m, " = ? ")
+			data := this.RowSQL(fmt.Sprintf("SELECT * FROM `%s` WHERE %s", tableName, strings.Join(ks, "AND")), vs...).RawsMapInterface()
+			this.dataRender(w, data)
+		}
 	} else {
 		ks, vs := ksvs(m, " = ? ")
 		//SELECT `section`.* FROM `group_section` LEFT JOIN section ON group_section.section_id = section.id WHERE group_id = 1
@@ -328,7 +333,7 @@ func (this *CRUD) Find(v interface{}, args ...interface{}) {
 	} else {
 		args = append(args, nil)
 	}
-
+	fmt.Println(this.tableColumns[tableName])
 	if this.tableColumns[tableName].HaveColumn("is_deleted") {
 		where += " AND is_deleted = 0"
 	}

@@ -3,11 +3,20 @@ package crud
 import (
 	"database/sql"
 	"reflect"
+	"strconv"
 )
 
 type SQLRows struct {
 	rows *sql.Rows
 	err  error
+}
+
+func (r *SQLRows) RawMapInterface() map[string]interface{} {
+	raws := r.RawsMapInterface()
+	if len(raws) >= 1 {
+		return raws[0]
+	}
+	return make(map[string]interface{}, 0)
 }
 
 /*
@@ -107,12 +116,29 @@ func (r *SQLRows) Find(v interface{}) {
 
 	} else {
 		if len(m) == 1 {
-			elem := reflect.ValueOf(v).Elem()
-			for i := 0; i < elem.NumField(); i++ {
-				dbn := ToDBName(reflect.TypeOf(v).Elem().Field(i).Name)
-				dbv, ok := m[0][dbn]
-				if ok && dbv != nil {
-					r.setValue(elem.Field(i), dbv)
+			switch rv.Kind() {
+			case reflect.Struct:
+				elem := reflect.ValueOf(v).Elem()
+				for i := 0; i < elem.NumField(); i++ {
+					dbn := ToDBName(reflect.TypeOf(v).Elem().Field(i).Name)
+					dbv, ok := m[0][dbn]
+					if ok && dbv != nil {
+						r.setValue(elem.Field(i), dbv)
+					}
+				}
+			case reflect.Int, reflect.Int64:
+				for _, v := range m[0] {
+					str, ok := v.(string)
+					if ok {
+						val, err := strconv.Atoi(str)
+						if err == nil {
+							r.setValue(rv, val)
+						}
+					}
+				}
+			default:
+				for _, v := range m[0] {
+					r.setValue(rv, v)
 				}
 			}
 		}
