@@ -45,12 +45,18 @@ type CRUD struct {
 	render         CRUDRender //crud本身不渲染数据，通过其他地方传入一个渲染的函数，然后渲染都是那边处理。
 }
 
-func NewCRUD(dataSourceName string, render CRUDRender) *CRUD {
+func NewCRUD(dataSourceName string, render ...CRUDRender) *CRUD {
 	crud := &CRUD{
 		debug:          false,
 		tableColumns:   make(map[string]Columns),
 		dataSourceName: dataSourceName,
-		render:         render,
+		render: func(w http.ResponseWriter, err error, data ...interface{}) {
+			if len(render) == 1 {
+				if render[0] != nil {
+					render[0](w, err, data...)
+				}
+			}
+		},
 	}
 
 	for _, tbm := range crud.RowSQL("SHOW TABLES").RawsMap() {
