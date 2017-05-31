@@ -120,6 +120,20 @@ func (this *CRUD) Log(args ...interface{}) {
 	}
 }
 
+func (this *CRUD) UpdateTime(tableName string) (updateTime string) {
+	this.Query("SELECT `UPDATE_TIME` FROM  INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA =(select database()) AND TABLE_NAME = '" + tableName + "';").Scan(&updateTime)
+	return
+}
+
+func (this *CRUD) AutoIncrement(tableName string) (id int) {
+	this.Query("SELECT `AUTO_INCREMENT` FROM  INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA =(select database()) AND TABLE_NAME = '" + tableName + "';").Scan(&id)
+	return
+}
+
+func (this *CRUD) Query(sql string, args ...interface{}) *SQLRows {
+	return this.RowSQL(sql, args...)
+}
+
 func (this *CRUD) RowSQL(sql string, args ...interface{}) *SQLRows {
 	db, err := this.DB()
 	defer db.Close()
@@ -131,6 +145,7 @@ func (this *CRUD) RowSQL(sql string, args ...interface{}) *SQLRows {
 	rows, err := db.Query(sql, args...)
 	return &SQLRows{rows: rows, err: err}
 }
+
 func (this *CRUD) Exec(sql string, args ...interface{}) *SQLResult {
 	db, err := this.DB()
 	defer db.Close()
@@ -140,6 +155,9 @@ func (this *CRUD) Exec(sql string, args ...interface{}) *SQLResult {
 	}
 	this.Log(sql, args)
 	ret, err := db.Exec(sql, args...)
+	if err != nil {
+		fmt.Println(err)
+	}
 	return &SQLResult{ret: ret, err: err}
 }
 

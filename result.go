@@ -152,8 +152,11 @@ func (r *SQLRows) setValue(v reflect.Value, i interface{}) {
 	}
 }
 
-func (r *SQLRows) Scan(v interface{}) {
-	r.rows.Scan(r.rows)
+func (r *SQLRows) Scan(v interface{}) error {
+	if r.rows.Next() {
+		return r.rows.Scan(v)
+	}
+	return nil
 }
 
 func queryRows(rows *sql.Rows) []map[string]string {
