@@ -1,15 +1,12 @@
 package crud
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
 	"time"
-
-	_ "github.com/go-sql-driver/mysql" //底层使用，目前只支持mysql数据库。
 )
 
 // 错误
@@ -42,6 +39,7 @@ type CRUD struct {
 
 	tableColumns   map[string]Columns
 	dataSourceName string
+	p              *Pools
 	render         CRUDRender //crud本身不渲染数据，通过其他地方传入一个渲染的函数，然后渲染都是那边处理。
 }
 
@@ -50,6 +48,7 @@ func NewCRUD(dataSourceName string, render ...CRUDRender) *CRUD {
 		debug:          false,
 		tableColumns:   make(map[string]Columns),
 		dataSourceName: dataSourceName,
+		p:              NewPool(dataSourceName, 100),
 		render: func(w http.ResponseWriter, err error, data ...interface{}) {
 			if len(render) == 1 {
 				if render[0] != nil {
@@ -69,6 +68,10 @@ func NewCRUD(dataSourceName string, render ...CRUDRender) *CRUD {
 
 func (this *CRUD) X(args ...interface{}) {
 	fmt.Println("[DEBUG]", args)
+}
+
+func (this *CRUD) Table(tablename string) *Table {
+	return &Table{CRUD: this, tableName: tablename}
 }
 
 func (this *CRUD) ExecSuccessRender(w http.ResponseWriter) {
@@ -120,16 +123,6 @@ func (this *CRUD) Log(args ...interface{}) {
 	}
 }
 
-func (this *CRUD) UpdateTime(tableName string) (updateTime string) {
-	this.Query("SELECT `UPDATE_TIME` FROM  INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA =(select database()) AND TABLE_NAME = '" + tableName + "';").Scan(&updateTime)
-	return
-}
-
-func (this *CRUD) AutoIncrement(tableName string) (id int) {
-	this.Query("SELECT `AUTO_INCREMENT` FROM  INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA =(select database()) AND TABLE_NAME = '" + tableName + "';").Scan(&id)
-	return
-}
-
 func (this *CRUD) Query(sql string, args ...interface{}) *SQLRows {
 	return this.RowSQL(sql, args...)
 }
@@ -143,6 +136,12 @@ func (this *CRUD) RowSQL(sql string, args ...interface{}) *SQLRows {
 	}
 	this.Log(sql, args)
 	rows, err := db.Query(sql, args...)
+	/*
+		dial tcp 192.168.2.14:3306: connectex: Only one usage of each socket address (protocol/network address/port) is normally permitted.
+	*/
+	if err != nil {
+		fmt.Println(err)
+	}
 	return &SQLRows{rows: rows, err: err}
 }
 
@@ -161,9 +160,10 @@ func (this *CRUD) Exec(sql string, args ...interface{}) *SQLResult {
 	return &SQLResult{ret: ret, err: err}
 }
 
-func (this *CRUD) DB() (*sql.DB, error) {
+func (this *CRUD) DB() (*DB, error) {
 	// TODO 进行短连接和连接池的效率比较
-	return sql.Open("mysql", this.dataSourceName)
+	//return sql.Open("mysql", this.dataSourceName)
+	return this.p.Open()
 }
 
 func (this *CRUD) Create(v interface{}, w http.ResponseWriter, r *http.Request) {
