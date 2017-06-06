@@ -113,6 +113,24 @@ func (r *SQLRows) RawsMap() []map[string]string {
 	return rs
 }
 
+func (r *SQLRows) Int() int {
+	if r.err != nil {
+		return 0
+	}
+	count := 0
+	r.Scan(&count)
+	return count
+}
+
+func (r *SQLRows) String() string {
+	if r.err != nil {
+		return ""
+	}
+	str := ""
+	r.Scan(&str)
+	return str
+}
+
 func (r *SQLRows) Find(v interface{}) {
 	m := r.RawsMapInterface()
 	rv := reflect.ValueOf(v).Elem()

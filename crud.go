@@ -15,10 +15,18 @@ var (
 	ErrArgs = errors.New("参数错误")
 )
 
-type CRUDRender func(w http.ResponseWriter, err error, data ...interface{})
+// 用于编程经常遇到的时间
+var (
+	TimeFormat = "2006-01-02 15:04:05"
+)
 
+// Render 用于对接http.HandleFunc直接调用CRUD
+type Render func(w http.ResponseWriter, err error, data ...interface{})
+
+// Columns 用于表示一张表中的列，使用名字作为index，方便查找。
 type Columns map[string]Column
 
+// HaveColumn 是否有此类
 func (cs Columns) HaveColumn(columnName string) bool {
 	if cs == nil {
 		return false
@@ -27,6 +35,7 @@ func (cs Columns) HaveColumn(columnName string) bool {
 	return ok
 }
 
+// Column 是描述一个具体的列
 type Column struct {
 	Name       string
 	Comment    string
@@ -34,16 +43,18 @@ type Column struct {
 	DataType   string
 }
 
+// CRUD 本包关键类
 type CRUD struct {
 	debug bool
 
 	tableColumns   map[string]Columns
 	dataSourceName string
 	p              *Pools
-	render         CRUDRender //crud本身不渲染数据，通过其他地方传入一个渲染的函数，然后渲染都是那边处理。
+	render         Render //crud本身不渲染数据，通过其他地方传入一个渲染的函数，然后渲染都是那边处理。
 }
 
-func NewCRUD(dataSourceName string, render ...CRUDRender) *CRUD {
+// NewCRUD 创建一个新的CRUD链接
+func NewCRUD(dataSourceName string, render ...Render) *CRUD {
 	crud := &CRUD{
 		debug:          false,
 		tableColumns:   make(map[string]Columns),
@@ -58,7 +69,7 @@ func NewCRUD(dataSourceName string, render ...CRUDRender) *CRUD {
 		},
 	}
 
-	for _, tbm := range crud.RowSQL("SHOW TABLES").RawsMap() {
+	for _, tbm := range crud.Query("SHOW TABLES").RawsMap() {
 		for _, v := range tbm {
 			crud.getColums(v)
 		}
@@ -66,10 +77,12 @@ func NewCRUD(dataSourceName string, render ...CRUDRender) *CRUD {
 	return crud
 }
 
-func (this *CRUD) X(args ...interface{}) {
+// X 用于DEBUG
+func (*CRUD) X(args ...interface{}) {
 	fmt.Println("[DEBUG]", args)
 }
 
+// Table 返回一个Table
 func (this *CRUD) Table(tablename string) *Table {
 	return &Table{CRUD: this, tableName: tablename}
 }
@@ -96,13 +109,13 @@ func (this *CRUD) haveTablename(tableName string) bool {
 	return ok
 }
 
-//获取表中所有列名
+// 获取表中所有列名
 func (this *CRUD) getColums(tablename string) Columns {
 	names, ok := this.tableColumns[tablename]
 	if ok {
 		return names
 	}
-	raws := this.RowSQL("SELECT COLUMN_NAME,COLUMN_COMMENT,COLUMN_TYPE,DATA_TYPE FROM information_schema.`COLUMNS` WHERE table_name= ? ", tablename).RawsMap()
+	raws := this.Query("SELECT COLUMN_NAME,COLUMN_COMMENT,COLUMN_TYPE,DATA_TYPE FROM information_schema.`COLUMNS` WHERE table_name= ? ", tablename).RawsMap()
 	cols := make(map[string]Column)
 	for _, v := range raws {
 		cols[v["COLUMN_NAME"]] = Column{Name: v["COLUMN_NAME"], Comment: v["COLUMN_COMMENT"], ColumnType: v["COLUMN_TYPE"], DataType: v["DATA_TYPE"]}
@@ -123,11 +136,12 @@ func (this *CRUD) Log(args ...interface{}) {
 	}
 }
 
-func (this *CRUD) Query(sql string, args ...interface{}) *SQLRows {
-	return this.RowSQL(sql, args...)
+func (this *CRUD) RowSQL(sql string, args ...interface{}) *SQLRows {
+	return this.Query(sql, args...)
 }
 
-func (this *CRUD) RowSQL(sql string, args ...interface{}) *SQLRows {
+// Query 用于底层查询，一般是SELECT语句
+func (this *CRUD) Query(sql string, args ...interface{}) *SQLRows {
 	db, err := this.DB()
 	defer db.Close()
 	if err != nil {
@@ -145,6 +159,7 @@ func (this *CRUD) RowSQL(sql string, args ...interface{}) *SQLRows {
 	return &SQLRows{rows: rows, err: err}
 }
 
+// Exec 用于底层执行，一般是INSERT INTO、DELETE、UPDATE。
 func (this *CRUD) Exec(sql string, args ...interface{}) *SQLResult {
 	db, err := this.DB()
 	defer db.Close()
@@ -161,11 +176,13 @@ func (this *CRUD) Exec(sql string, args ...interface{}) *SQLResult {
 }
 
 func (this *CRUD) DB() (*DB, error) {
-	// TODO 进行短连接和连接池的效率比较
-	//return sql.Open("mysql", this.dataSourceName)
 	return this.p.Open()
 }
 
+/*
+	Create 用于创建
+
+*/
 func (this *CRUD) Create(v interface{}, w http.ResponseWriter, r *http.Request) {
 	tableName := getStructDBName(v)
 	m := parseRequest(v, r, C)
@@ -203,6 +220,7 @@ func (this *CRUD) Create(v interface{}, w http.ResponseWriter, r *http.Request) 
 }
 
 /*
+	查找
 	id = 1
 	id = 1  AND hospital_id = 1
 
@@ -223,7 +241,7 @@ func (this *CRUD) Read(v interface{}, w http.ResponseWriter, r *http.Request) {
 	ctn := "" //combine table name
 	//fk := ""
 	//var fkv interface{}
-	for k, _ := range m {
+	for k := range m {
 		if !cols.HaveColumn(k) {
 			if strings.Contains(k, "_id") {
 				atn := strings.TrimRight(k, "_id") //another table name
@@ -244,9 +262,6 @@ func (this *CRUD) Read(v interface{}, w http.ResponseWriter, r *http.Request) {
 				if ctn == "" {
 					this.argsErrorRender(w)
 					return
-				} else {
-					//fk = k
-					//fkv = m[fk]
 				}
 			}
 		}
@@ -257,23 +272,22 @@ func (this *CRUD) Read(v interface{}, w http.ResponseWriter, r *http.Request) {
 	if ctn == "" {
 		//如果没有设置ID，则查找所有的。
 		if m == nil || len(m) == 0 {
-			data := this.RowSQL(fmt.Sprintf("SELECT * FROM `%s`", tableName)).RawsMapInterface()
+			data := this.Query(fmt.Sprintf("SELECT * FROM `%s`", tableName)).RawsMapInterface()
 			this.dataRender(w, data)
 		} else {
 			ks, vs := ksvs(m, " = ? ")
-			data := this.RowSQL(fmt.Sprintf("SELECT * FROM `%s` WHERE %s", tableName, strings.Join(ks, "AND")), vs...).RawsMapInterface()
+			data := this.Query(fmt.Sprintf("SELECT * FROM `%s` WHERE %s", tableName, strings.Join(ks, "AND")), vs...).RawsMapInterface()
 			this.dataRender(w, data)
 		}
 	} else {
 		ks, vs := ksvs(m, " = ? ")
 		//SELECT `section`.* FROM `group_section` LEFT JOIN section ON group_section.section_id = section.id WHERE group_id = 1
-		data := this.RowSQL(fmt.Sprintf("SELECT `%s`.* FROM `%s` LEFT JOIN `%s` ON `%s`.`%s` = `%s`.`%s` WHERE %s", tableName, ctn, tableName, ctn, tableName+"_id", tableName, "id", strings.Join(ks, "AND")), vs...).RawsMapInterface()
+		data := this.Query(fmt.Sprintf("SELECT `%s`.* FROM `%s` LEFT JOIN `%s` ON `%s`.`%s` = `%s`.`%s` WHERE %s", tableName, ctn, tableName, ctn, tableName+"_id", tableName, "id", strings.Join(ks, "AND")), vs...).RawsMapInterface()
 		this.dataRender(w, data)
 	}
 }
 
-var TimeFormat = "2006-01-02 15:04:05"
-
+// 更新
 func (this *CRUD) Update(v interface{}, w http.ResponseWriter, r *http.Request) {
 	fmt.Println(r.Form)
 	tableName := getStructDBName(v)
@@ -298,6 +312,8 @@ func (this *CRUD) Update(v interface{}, w http.ResponseWriter, r *http.Request) 
 	}
 	this.ExecSuccessRender(w)
 }
+
+// 删除
 func (this *CRUD) Delete(v interface{}, w http.ResponseWriter, r *http.Request) {
 	tableName := getStructDBName(v)
 	m := parseRequest(v, r, R)
@@ -334,7 +350,7 @@ func (this *CRUD) Find(v interface{}, args ...interface{}) {
 	if len(args) > 0 {
 		if sql, ok := args[0].(string); ok {
 			if strings.Contains(args[0].(string), "SELECT") {
-				this.RowSQL(sql, args[1:]...).Find(v)
+				this.Query(sql, args[1:]...).Find(v)
 				return
 			}
 		}
@@ -362,7 +378,7 @@ func (this *CRUD) Find(v interface{}, args ...interface{}) {
 		where += " AND is_deleted = 0"
 	}
 
-	this.RowSQL(fmt.Sprintf("SELECT * FROM `%s` %s", tableName, where), args[1:]...).Find(v)
+	this.Query(fmt.Sprintf("SELECT * FROM `%s` %s", tableName, where), args[1:]...).Find(v)
 }
 
 /*

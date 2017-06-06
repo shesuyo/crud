@@ -73,6 +73,7 @@ const (
 	upper strCase = true
 )
 
+// ToStructName convert string to struct name
 func ToStructName(name string) string {
 	return smap.RGet(name)
 }
@@ -124,18 +125,6 @@ func ToDBName(name string) string {
 	s := strings.ToLower(buf.String())
 	smap.Set(name, s)
 	return s
-}
-
-// SQL expression
-type expr struct {
-	expr string
-	args []interface{}
-}
-
-// Expr generate raw SQL expression, for example:
-//     DB.Model(&product).Update("price", gorm.Expr("price * ? + ?", 2, 100))
-func Expr(expression string, args ...interface{}) *expr {
-	return &expr{expr: expression, args: args}
 }
 
 func indirect(reflectValue reflect.Value) reflect.Value {
@@ -275,4 +264,12 @@ func ksvs(m map[string]interface{}, keyTail ...string) ([]string, []interface{})
 		vs = append(vs, v)
 	}
 	return ks, vs
+}
+
+func argslice(l int) string {
+	s := []string{}
+	for i := 0; i < l; i++ {
+		s = append(s, "?")
+	}
+	return strings.Join(s, ",")
 }
