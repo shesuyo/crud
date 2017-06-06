@@ -6,6 +6,14 @@ import (
 	"strconv"
 )
 
+/*
+	对于数据库底层的封装处理的时候一定要判断err是否为nil，因为当err为nil的时候sql.Rows也是nil，这样操作的时候就很容易出现错误了。
+	if r.err != nil {
+		return r.err
+	}
+
+	如果不使用连接池，出现Too many connections错误在并发量很大的时候很频繁。
+*/
 type SQLRows struct {
 	rows *sql.Rows
 	err  error
@@ -81,6 +89,13 @@ func (r *SQLRows) RawsMapInterface() []map[string]interface{} {
 
 func (r *SQLRows) RawsMap() []map[string]string {
 	rs := []map[string]string{}
+	//panic: runtime error: invalid memory address or nil pointer dereference
+	if r.err != nil {
+		return rs
+	}
+	if r.rows == nil {
+		return rs
+	}
 	cols, _ := r.rows.Columns()
 	for r.rows.Next() {
 		rowMap := make(map[string]string)
@@ -153,6 +168,9 @@ func (r *SQLRows) setValue(v reflect.Value, i interface{}) {
 }
 
 func (r *SQLRows) Scan(v interface{}) error {
+	if r.err != nil {
+		return r.err
+	}
 	if r.rows.Next() {
 		return r.rows.Scan(v)
 	}
