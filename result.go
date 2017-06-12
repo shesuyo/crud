@@ -97,9 +97,9 @@ func (r *SQLRows) RawsMap() []map[string]string {
 		return rs
 	}
 	cols, _ := r.rows.Columns()
+
 	for r.rows.Next() {
 		rowMap := make(map[string]string)
-
 		containers := make([]interface{}, 0, len(cols))
 		for i := 0; i < cap(containers); i++ {
 			containers = append(containers, &[]byte{})

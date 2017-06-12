@@ -3,8 +3,10 @@ package crud
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"reflect"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -136,25 +138,47 @@ func (this *CRUD) Log(args ...interface{}) {
 	}
 }
 
-func (this *CRUD) RowSQL(sql string, args ...interface{}) *SQLRows {
-	return this.Query(sql, args...)
+// LogSQL 会将sql语句中的?替换成相应的参数，让DEBUG的时候可以直接复制SQL语句去使用。
+func (api *CRUD) LogSQL(sql string, args ...interface{}) {
+	for _, arg := range args {
+		sql = strings.Replace(sql, "?", fmt.Sprintf("'%v'", arg), 1)
+	}
+	api.Log(sql)
+}
+
+//
+func (api *CRUD) RowSQL(sql string, args ...interface{}) *SQLRows {
+	return api.Query(sql, args...)
 }
 
 // Query 用于底层查询，一般是SELECT语句
-func (this *CRUD) Query(sql string, args ...interface{}) *SQLRows {
-	db, err := this.DB()
+func (api *CRUD) Query(sql string, args ...interface{}) *SQLRows {
+	db, err := api.DB()
 	defer db.Close()
 	if err != nil {
-		this.Log("[ERROR]", err)
+		api.Log("[ERROR]", err)
 		return &SQLRows{}
 	}
-	this.Log(sql, args)
+	api.LogSQL(sql, args...)
 	rows, err := db.Query(sql, args...)
 	/*
 		dial tcp 192.168.2.14:3306: connectex: Only one usage of each socket address (protocol/network address/port) is normally permitted.
 	*/
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println(time.Now().Format(TimeFormat), err)
+		oldDebug := api.debug
+		api.debug = true
+		api.LogSQL(sql, args...)
+		api.debug = oldDebug
+
+		pc, file, line, ok := runtime.Caller(2)
+		log.Println(pc)
+		log.Println(file)
+		log.Println(line)
+		log.Println(ok)
+		f := runtime.FuncForPC(pc)
+		log.Println(f.Name())
+
 	}
 	return &SQLRows{rows: rows, err: err}
 }
@@ -167,7 +191,7 @@ func (this *CRUD) Exec(sql string, args ...interface{}) *SQLResult {
 		this.Log("[ERROR]", err)
 		return &SQLResult{}
 	}
-	this.Log(sql, args)
+	this.LogSQL(sql, args...)
 	ret, err := db.Exec(sql, args...)
 	if err != nil {
 		fmt.Println(err)
