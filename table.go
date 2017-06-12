@@ -72,3 +72,35 @@ func (t *Table) Create(m map[string]interface{}, checks ...string) error {
 	}
 	return nil
 }
+
+func (t *Table) Update(m map[string]interface{}, keys ...string) error {
+	if len(keys) == 0 {
+		keys = append(keys, "id")
+	}
+	keysValue := []interface{}{}
+	whereks := []string{}
+	for _, key := range keys {
+		val, ok := m[key]
+		if !ok {
+			return errors.New("没有更新主键")
+		}
+		keysValue = append(keysValue, val)
+		delete(m, key)
+		whereks = append(whereks, "`"+key+"` = ? ")
+	}
+	//因为在更新的时候最好不要更新ID，而有时候又会将ID传入进来，所以id每次都会被删除，如果要更新id的话使用Exec()
+	delete(m, "id")
+	ks, vs := ksvs(m, " = ? ")
+	for _, val := range keysValue {
+		vs = append(vs, val)
+	}
+	_, err := t.Exec(fmt.Sprintf("UPDATE `%s` SET %s WHERE %s LIMIT 1", t.tableName, strings.Join(ks, ","), strings.Join(whereks, "AND")), vs...).Effected()
+	if err != nil {
+		return errors.New("SQL语句异常")
+	}
+	return nil
+}
+
+func (t *Table) Delete(m map[string]interface{}) error {
+	return nil
+}
