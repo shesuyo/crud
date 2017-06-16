@@ -136,7 +136,7 @@ func parseRequest(v interface{}, r *http.Request, method string) map[string]inte
 			m[f.DBName()] = r.FormValue(f.DBName())
 		}
 	}
-	for k, _ := range r.Form {
+	for k := range r.Form {
 		if strings.Contains(k, "_id") {
 			m[k] = r.FormValue(k)
 		}
