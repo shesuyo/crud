@@ -160,8 +160,8 @@ func (r *SQLRows) RawsMap() []map[string]string {
 		}
 		r.rows.Scan(containers...)
 		for i := 0; i < len(cols); i++ {
-			//rowMap[cols[i]] = string(*containers[i].(*[]byte))
-			rowMap[cols[i]] = *(*string)(unsafe.Pointer(containers[i].(*[]byte)))
+			rowMap[cols[i]] = string(*containers[i].(*[]byte))
+			//rowMap[cols[i]] = *(*string)(unsafe.Pointer(containers[i].(*[]byte)))
 		}
 		rs = append(rs, rowMap)
 	}
@@ -320,31 +320,31 @@ func scanRows(rows *sql.Rows) map[string]string {
 }
 
 // SQLResult 是一个封装了sql.Result 的结构体
-type SQLResult struct {
-	ret sql.Result
-	err error
-}
+//type SQLResult struct {
+//	ret sql.Result
+//	err error
+//}
 
-// ID 获取插入的ID
-func (r *SQLResult) ID() (int64, error) {
-	if r.err != nil {
-		return 0, r.err
-	}
-	id, err := r.ret.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-	return id, nil
-}
+//// ID 获取插入的ID
+//func (r *SQLResult) ID() (int64, error) {
+//	if r.err != nil {
+//		return 0, r.err
+//	}
+//	id, err := r.ret.LastInsertId()
+//	if err != nil {
+//		return 0, err
+//	}
+//	return id, nil
+//}
 
-// Effected 获取影响行数
-func (r *SQLResult) Effected() (int64, error) {
-	if r.err != nil {
-		return 0, r.err
-	}
-	affected, err := r.ret.RowsAffected()
-	if err != nil {
-		return 0, err
-	}
-	return affected, nil
-}
+//// Effected 获取影响行数
+//func (r *SQLResult) Effected() (int64, error) {
+//	if r.err != nil {
+//		return 0, r.err
+//	}
+//	affected, err := r.ret.RowsAffected()
+//	if err != nil {
+//		return 0, err
+//	}
+//	return affected, nil
+//}

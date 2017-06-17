@@ -1,6 +1,7 @@
 package crud
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -51,17 +52,23 @@ type CRUD struct {
 
 	tableColumns   map[string]Columns
 	dataSourceName string
-	p              *Pools
+	db             *sql.DB
 	render         Render //crud本身不渲染数据，通过其他地方传入一个渲染的函数，然后渲染都是那边处理。
 }
 
 // NewCRUD 创建一个新的CRUD链接
 func NewCRUD(dataSourceName string, render ...Render) *CRUD {
+	db, err := sql.Open("mysql", dataSourceName)
+	if err != nil {
+		panic(err)
+	}
+	db.SetMaxIdleConns(20)
+	db.SetMaxOpenConns(20)
 	crud := &CRUD{
 		debug:          false,
 		tableColumns:   make(map[string]Columns),
 		dataSourceName: dataSourceName,
-		p:              NewPool(dataSourceName, 20),
+		db:             db,
 		render: func(w http.ResponseWriter, err error, data ...interface{}) {
 			if len(render) == 1 {
 				if render[0] != nil {
@@ -159,68 +166,47 @@ func getFullSQL(sql string, args ...interface{}) string {
 	return sql
 }
 
-// RowSQL 执行查询sqL
+// RowSQL Query alias
 func (api *CRUD) RowSQL(sql string, args ...interface{}) *SQLRows {
 	return api.Query(sql, args...)
 }
 
 // Query 用于底层查询，一般是SELECT语句
 func (api *CRUD) Query(sql string, args ...interface{}) *SQLRows {
-	db, err := api.DB()
-	defer db.Close()
-	if err != nil {
-		api.Log("[ERROR]", err)
-		return &SQLRows{}
-	}
+	db := api.DB()
 	api.LogSQL(sql, args...)
 	rows, err := db.Query(sql, args...)
 	/*
 		dial tcp 192.168.2.14:3306: connectex: Only one usage of each socket address (protocol/network address/port) is normally permitted.
 	*/
 	if err != nil {
-		fmt.Println(time.Now().Format(TimeFormat), err)
-		oldDebug := api.debug
-		api.debug = true
-		api.LogSQL(sql, args...)
-		api.debug = oldDebug
-
-		//这里会打印调用栈
-		buf := make([]byte, 1<<10)
-		runtime.Stack(buf, true)
-		log.Printf("%s\n%s\n", getFullSQL(sql, args...), buf)
-
+		api.stack(err, sql, args...)
 	}
 	return &SQLRows{rows: rows, err: err}
 }
 
 // Exec 用于底层执行，一般是INSERT INTO、DELETE、UPDATE。
-func (api *CRUD) Exec(sql string, args ...interface{}) *SQLResult {
-	db, err := api.DB()
-	defer db.Close()
-	if err != nil {
-		api.Log("[ERROR]", err)
-		return &SQLResult{}
-	}
+func (api *CRUD) Exec(sql string, args ...interface{}) sql.Result {
+	db := api.DB()
 	api.LogSQL(sql, args...)
 	ret, err := db.Exec(sql, args...)
 	if err != nil {
-		fmt.Println(time.Now().Format(TimeFormat), err)
-		oldDebug := api.debug
-		api.debug = true
-		api.LogSQL(sql, args...)
-		api.debug = oldDebug
+		api.stack(err, sql, args...)
 
-		//这里会打印调用栈
-		buf := make([]byte, 1<<10)
-		runtime.Stack(buf, true)
-		log.Printf("\n%s", buf)
 	}
-	return &SQLResult{ret: ret, err: err}
+	return ret
 }
 
-// DB 返回一个打开的DB链接
-func (api *CRUD) DB() (*DB, error) {
-	return api.p.Open()
+// 如果发生了异常就打印调用栈。
+func (api *CRUD) stack(err error, sql string, args ...interface{}) {
+	buf := make([]byte, 1<<10)
+	runtime.Stack(buf, true)
+	log.Printf("%s\n%s\n%s\n", err.Error(), getFullSQL(sql, args...), buf)
+}
+
+// DB 返回一个DB链接，查询后一定要关闭col，而不能关闭*sql.DB。
+func (api *CRUD) DB() *sql.DB {
+	return api.db
 }
 
 // Create 创建 旧的 TODO
@@ -254,7 +240,7 @@ func (api *CRUD) Create(v interface{}, w http.ResponseWriter, r *http.Request) {
 		args = append(args, v)
 	}
 	ret := api.Exec(fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", tableName, strings.Join(names, ","), strings.Join(values, ",")), args...)
-	id, err := ret.ID()
+	id, err := ret.LastInsertId()
 	if err != nil {
 		api.execErrorRender(w)
 		return
@@ -350,7 +336,7 @@ func (api *CRUD) Update(v interface{}, w http.ResponseWriter, r *http.Request) {
 	}
 	ks, vs := ksvs(m, " = ? ")
 	vs = append(vs, id)
-	_, err := api.Exec(fmt.Sprintf("UPDATE `%s` SET %s WHERE %s = ?", tableName, strings.Join(ks, ","), "id"), vs...).Effected()
+	_, err := api.Exec(fmt.Sprintf("UPDATE `%s` SET %s WHERE %s = ?", tableName, strings.Join(ks, ","), "id"), vs...).RowsAffected()
 	if err != nil {
 		api.execErrorRender(w)
 		return
@@ -376,7 +362,7 @@ func (api *CRUD) Delete(v interface{}, w http.ResponseWriter, r *http.Request) {
 	}
 	//	现在只支持根据ID进行删除
 	ks, vs := ksvs(m, " = ? ")
-	_, err := api.Exec(fmt.Sprintf("DELETE FROM %s WHERE %s ", tableName, strings.Join(ks, "AND")), vs...).Effected()
+	_, err := api.Exec(fmt.Sprintf("DELETE FROM %s WHERE %s ", tableName, strings.Join(ks, "AND")), vs...).RowsAffected()
 	if err != nil {
 		api.execErrorRender(w)
 		return

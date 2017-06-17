@@ -36,7 +36,9 @@ func (t *Table) AutoIncrement() (id int) {
 
 // SetAutoIncrement 设置自动增长ID
 func (t *Table) SetAutoIncrement(id int) error {
-	return t.Exec("ALTER TABLE `" + t.tableName + "` AUTO_INCREMENT = " + strconv.Itoa(id)).err
+	_, err := t.Exec("ALTER TABLE `" + t.tableName + "` AUTO_INCREMENT = " + strconv.Itoa(id)).RowsAffected()
+	return err
+
 }
 
 // MaxID 查找表的最大ID，如果为NULL的话则为0
@@ -71,7 +73,7 @@ func (t *Table) Create(m map[string]interface{}, checks ...string) error {
 		}
 	}
 	ks, vs := ksvs(m)
-	e, err := t.Exec(fmt.Sprintf("INSERT INTO `%s` (%s) VALUES (%s)", t.tableName, strings.Join(ks, ","), argslice(len(ks))), vs...).Effected()
+	e, err := t.Exec(fmt.Sprintf("INSERT INTO `%s` (%s) VALUES (%s)", t.tableName, strings.Join(ks, ","), argslice(len(ks))), vs...).RowsAffected()
 	if err != nil {
 		return errors.New("SQL语句异常")
 	}
@@ -102,7 +104,7 @@ func (t *Table) Update(m map[string]interface{}, keys ...string) error {
 	for _, val := range keysValue {
 		vs = append(vs, val)
 	}
-	_, err := t.Exec(fmt.Sprintf("UPDATE `%s` SET %s WHERE %s LIMIT 1", t.tableName, strings.Join(ks, ","), strings.Join(whereks, "AND")), vs...).Effected()
+	_, err := t.Exec(fmt.Sprintf("UPDATE `%s` SET %s WHERE %s LIMIT 1", t.tableName, strings.Join(ks, ","), strings.Join(whereks, "AND")), vs...).RowsAffected()
 	if err != nil {
 		return errors.New("SQL语句异常")
 	}
