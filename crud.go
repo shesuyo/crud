@@ -148,15 +148,15 @@ func (api *CRUD) log(args ...interface{}) {
 // LogSQL 会将sql语句中的?替换成相应的参数，让DEBUG的时候可以直接复制SQL语句去使用。
 func (api *CRUD) LogSQL(sql string, args ...interface{}) {
 	if api.debug {
-		api.logSQL(sql, args...)
+		api.log(getFullSQL(sql, args...))
 	}
 }
 
-func (api *CRUD) logSQL(sql string, args ...interface{}) {
+func getFullSQL(sql string, args ...interface{}) string {
 	for _, arg := range args {
 		sql = strings.Replace(sql, "?", fmt.Sprintf("'%v'", arg), 1)
 	}
-	api.Log(sql)
+	return sql
 }
 
 // RowSQL 执行查询sqL
@@ -187,7 +187,7 @@ func (api *CRUD) Query(sql string, args ...interface{}) *SQLRows {
 		//这里会打印调用栈
 		buf := make([]byte, 1<<10)
 		runtime.Stack(buf, true)
-		log.Printf("\n%s", buf)
+		log.Printf("%s\n%s\n", getFullSQL(sql, args...), buf)
 
 	}
 	return &SQLRows{rows: rows, err: err}
