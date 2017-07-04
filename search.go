@@ -50,7 +50,6 @@ func (s *search) Where(query string, values ...interface{}) *search {
 	s.whereConditions = append(s.whereConditions, wherecon{query: query, args: values})
 	return s
 }
-
 func (s *search) Joins(tablename string, condition ...string) *search {
 	if len(condition) == 1 {
 		s.joinConditions = append(s.joinConditions, joincon{tablename: tablename, condition: condition[0]})

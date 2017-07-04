@@ -1,5 +1,6 @@
-/*
-SOURCE FILE LICENSE
+/*Package crud crud
+
+SOURCE FILE LICENSE(utils.go)
 The MIT License (MIT)
 
 Copyright (c) 2013-NOW  Jinzhu <wosmvp@gmail.com>

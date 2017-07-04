@@ -219,6 +219,22 @@ func (api *CRUD) RowSQL(sql string, args ...interface{}) *SQLRows {
 	return api.Query(sql, args...)
 }
 
+/*
+	CRUD 查询
+*/
+
+//RawsMap transfer to query
+func (api *CRUD) RawsMap() []map[string]string {
+	query, args := api.search.Parse()
+	return api.Query(query, args...).RawsMap()
+}
+
+//DoubleSlice transfer to query
+func (api *CRUD) DoubleSlice() (map[string]int, [][]string) {
+	query, args := api.search.Parse()
+	return api.Query(query, args...).DoubleSlice()
+}
+
 // Query 用于底层查询，一般是SELECT语句
 func (api *CRUD) Query(sql string, args ...interface{}) *SQLRows {
 	db := api.DB()
