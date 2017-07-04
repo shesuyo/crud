@@ -6,7 +6,8 @@ import (
 	"strings"
 )
 
-var (
+//
+const (
 	C      = "CREATE"
 	CREATE = C
 	R      = "READ"

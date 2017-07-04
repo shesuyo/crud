@@ -87,25 +87,9 @@ func (api *CRUD) clone() *CRUD {
 	return &c
 }
 
-//Where where
-func (api *CRUD) Where(query string, args ...interface{}) *CRUD {
-	return api.clone().search.Where(query, args...).db
-}
-
-//Joins joins
-func (api *CRUD) Joins(query string, args ...string) *CRUD {
-	return api.clone().search.Joins(query, args...).db
-}
-
-//Fields fields
-func (api *CRUD) Fields(args ...string) *CRUD {
-	return api.clone().search.Fields(args...).db
-}
-
-// Table 返回一个Table
-func (api *CRUD) Table(tablename string) *Table {
-	return &Table{CRUD: api.clone().search.Table(tablename).db, tableName: tablename}
-}
+/*
+	CRUD table
+*/
 
 // ExecSuccessRender 渲染成功模板
 func (api *CRUD) ExecSuccessRender(w http.ResponseWriter) {
@@ -123,6 +107,29 @@ func (api *CRUD) execErrorRender(w http.ResponseWriter) {
 func (api *CRUD) dataRender(w http.ResponseWriter, data interface{}) {
 	api.render(w, nil, data)
 }
+
+/*
+	CRUD search
+*/
+
+//Where where
+func (api *CRUD) Where(query string, args ...interface{}) *CRUD {
+	return api.clone().search.Where(query, args...).db
+}
+
+//Joins joins
+func (api *CRUD) Joins(query string, args ...string) *CRUD {
+	return api.clone().search.Joins(query, args...).db
+}
+
+//Fields fields
+func (api *CRUD) Fields(args ...string) *CRUD {
+	return api.clone().search.Fields(args...).db
+}
+
+/*
+	CRUD colums table
+*/
 
 // HaveTable 是否有这张表
 func (api *CRUD) HaveTable(tablename string) bool {
@@ -150,6 +157,15 @@ func (api *CRUD) getColums(tablename string) Columns {
 	return cols
 }
 
+// Table 返回一个Table
+func (api *CRUD) Table(tablename string) *Table {
+	return &Table{CRUD: api.clone().search.TableName(tablename).db, tableName: tablename}
+}
+
+/*
+	CRUD debug
+*/
+
 // Debug 是否开启debug功能 true为开启
 func (api *CRUD) Debug(isDebug bool) *CRUD {
 	api.debug = isDebug
@@ -168,8 +184,9 @@ func (api *CRUD) Log(args ...interface{}) {
 	}
 }
 
-func (api *CRUD) log(args ...interface{}) {
-	log.Println(args...)
+//Parse ceshi
+func (api *CRUD) Parse() (string, []interface{}) {
+	return api.search.Parse()
 }
 
 // LogSQL 会将sql语句中的?替换成相应的参数，让DEBUG的时候可以直接复制SQL语句去使用。
@@ -179,11 +196,22 @@ func (api *CRUD) LogSQL(sql string, args ...interface{}) {
 	}
 }
 
+func (api *CRUD) log(args ...interface{}) {
+	log.Println(args...)
+}
+
 func getFullSQL(sql string, args ...interface{}) string {
 	for _, arg := range args {
 		sql = strings.Replace(sql, "?", fmt.Sprintf("'%v'", arg), 1)
 	}
 	return sql
+}
+
+// 如果发生了异常就打印调用栈。
+func (api *CRUD) stack(err error, sql string, args ...interface{}) {
+	buf := make([]byte, 1<<10)
+	runtime.Stack(buf, true)
+	log.Printf("%s\n%s\n%s\n", err.Error(), getFullSQL(sql, args...), buf)
 }
 
 // RowSQL Query alias
@@ -215,13 +243,6 @@ func (api *CRUD) Exec(sql string, args ...interface{}) sql.Result {
 
 	}
 	return ret
-}
-
-// 如果发生了异常就打印调用栈。
-func (api *CRUD) stack(err error, sql string, args ...interface{}) {
-	buf := make([]byte, 1<<10)
-	runtime.Stack(buf, true)
-	log.Printf("%s\n%s\n%s\n", err.Error(), getFullSQL(sql, args...), buf)
 }
 
 // DB 返回一个DB链接，查询后一定要关闭col，而不能关闭*sql.DB。
@@ -530,9 +551,4 @@ func (api *CRUD) FindAll(v interface{}, args ...interface{}) {
 
 	//然后再实现Slice
 
-}
-
-//Parse ceshi
-func (api *CRUD) Parse() (string, []interface{}) {
-	return api.search.Parse()
 }

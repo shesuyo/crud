@@ -58,7 +58,7 @@ func (s *search) Joins(tablename string, condition ...string) *search {
 	return s
 }
 
-func (s *search) Table(name string) *search {
+func (s *search) TableName(name string) *search {
 	s.tableName = name
 	return s
 }
