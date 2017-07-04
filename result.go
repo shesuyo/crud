@@ -169,15 +169,15 @@ func (r *SQLRows) RawsMap() []map[string]string {
 }
 
 // DoubleSlice 用于追求效率和更低的内存，但是使用比较不方便。
-func (r *SQLRows) DoubleSlice() ([]string, [][]string) {
+func (r *SQLRows) DoubleSlice() (map[string]int, [][]string) {
 	cols := make([]string, 0)
 	datas := make([][]string, 0)
 	if r.err != nil {
-		return cols, datas
+		return map[string]int{}, datas
 	}
 	cols, err := r.rows.Columns()
 	if err != nil {
-		return cols, datas
+		return map[string]int{}, datas
 	}
 	rawResult := make([][]byte, len(cols))
 	dest := make([]interface{}, len(cols))
@@ -187,7 +187,7 @@ func (r *SQLRows) DoubleSlice() ([]string, [][]string) {
 	for r.rows.Next() {
 		err := r.rows.Scan(dest...)
 		if err != nil {
-			return cols, datas
+			return map[string]int{}, datas
 		}
 		result := make([]string, len(cols))
 		for i, raw := range rawResult {
@@ -199,7 +199,11 @@ func (r *SQLRows) DoubleSlice() ([]string, [][]string) {
 		}
 		datas = append(datas, result)
 	}
-	return cols, datas
+	m := make(map[string]int, len(cols))
+	for k, v := range cols {
+		m[v] = k
+	}
+	return m, datas
 }
 
 // Int SCAN 一个int类型，只能在只有一列中使用。

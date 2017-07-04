@@ -10,6 +10,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	_ "github.com/go-sql-driver/mysql" //
 )
 
 // 错误
@@ -26,26 +28,6 @@ var (
 // Render 用于对接http.HandleFunc直接调用CRUD
 type Render func(w http.ResponseWriter, err error, data ...interface{})
 
-// Columns 用于表示一张表中的列，使用名字作为index，方便查找。
-type Columns map[string]Column
-
-// HaveColumn 是否有此类
-func (cs Columns) HaveColumn(columnName string) bool {
-	if cs == nil {
-		return false
-	}
-	_, ok := cs[columnName]
-	return ok
-}
-
-// Column 是描述一个具体的列
-type Column struct {
-	Name       string
-	Comment    string
-	ColumnType string
-	DataType   string
-}
-
 // CRUD 本包关键类
 type CRUD struct {
 	debug bool
@@ -53,6 +35,7 @@ type CRUD struct {
 	tableColumns   map[string]Columns
 	dataSourceName string
 	db             *sql.DB
+	search         *search
 	render         Render //crud本身不渲染数据，通过其他地方传入一个渲染的函数，然后渲染都是那边处理。
 }
 
@@ -86,9 +69,42 @@ func NewCRUD(dataSourceName string, render ...Render) *CRUD {
 	return crud
 }
 
+func (api *CRUD) clone() *CRUD {
+	c := CRUD{
+		debug: api.debug,
+
+		tableColumns:   api.tableColumns,
+		dataSourceName: api.dataSourceName,
+		db:             api.db,
+		render:         api.render,
+	}
+	if api.search == nil {
+		c.search = &search{}
+	} else {
+		c.search = api.search.clone()
+	}
+	c.search.db = &c
+	return &c
+}
+
+//Where where
+func (api *CRUD) Where(query string, args ...interface{}) *CRUD {
+	return api.clone().search.Where(query, args...).db
+}
+
+//Joins joins
+func (api *CRUD) Joins(query string, args ...string) *CRUD {
+	return api.clone().search.Joins(query, args...).db
+}
+
+//Fields fields
+func (api *CRUD) Fields(args ...string) *CRUD {
+	return api.clone().search.Fields(args...).db
+}
+
 // Table 返回一个Table
 func (api *CRUD) Table(tablename string) *Table {
-	return &Table{CRUD: api, tableName: tablename}
+	return &Table{CRUD: api.clone().search.Table(tablename).db, tableName: tablename}
 }
 
 // ExecSuccessRender 渲染成功模板
@@ -108,7 +124,11 @@ func (api *CRUD) dataRender(w http.ResponseWriter, data interface{}) {
 	api.render(w, nil, data)
 }
 
-// 是否有这张表名
+// HaveTable 是否有这张表
+func (api *CRUD) HaveTable(tablename string) bool {
+	return api.haveTablename(tablename)
+}
+
 func (api *CRUD) haveTablename(tableName string) bool {
 	_, ok := api.tableColumns[tableName]
 	return ok
@@ -510,4 +530,9 @@ func (api *CRUD) FindAll(v interface{}, args ...interface{}) {
 
 	//然后再实现Slice
 
+}
+
+//Parse ceshi
+func (api *CRUD) Parse() (string, []interface{}) {
+	return api.search.Parse()
 }

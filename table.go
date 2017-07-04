@@ -11,6 +11,11 @@ type Table struct {
 	tableName string
 }
 
+// Name 返回名称
+func (t *Table) Name() string {
+	return t.tableName
+}
+
 // All 返回这张表所有数据
 func (t *Table) All() []map[string]string {
 	return t.Query("SELECT * FROM " + t.tableName).RawsMap()
@@ -38,7 +43,6 @@ func (t *Table) AutoIncrement() (id int) {
 func (t *Table) SetAutoIncrement(id int) error {
 	_, err := t.Exec("ALTER TABLE `" + t.tableName + "` AUTO_INCREMENT = " + strconv.Itoa(id)).RowsAffected()
 	return err
-
 }
 
 // MaxID 查找表的最大ID，如果为NULL的话则为0
@@ -83,6 +87,7 @@ func (t *Table) Create(m map[string]interface{}, checks ...string) error {
 	return nil
 }
 
+// Update 更新
 func (t *Table) Update(m map[string]interface{}, keys ...string) error {
 	if len(keys) == 0 {
 		keys = append(keys, "id")
@@ -111,6 +116,7 @@ func (t *Table) Update(m map[string]interface{}, keys ...string) error {
 	return nil
 }
 
+// Delete 删除
 func (t *Table) Delete(m map[string]interface{}) error {
 	return nil
 }
