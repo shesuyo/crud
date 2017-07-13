@@ -1,9 +1,6 @@
 package crud
 
 import (
-	"encoding/json"
-	"fmt"
-	"net/http"
 	"testing"
 	"time"
 )
@@ -21,26 +18,26 @@ type Task struct {
 }
 
 func TestNewCRUD(t *testing.T) {
-	crud := NewCRUD("root:moss7!@/satisfaction?charset=utf8", func(w http.ResponseWriter, err error, data ...interface{}) {
-		m := make(map[string]interface{})
-		if err != nil {
-			m["success"] = false
-			m["msg"] = err.Error()
-		} else {
-			m["success"] = true
-			m["msg"] = true
-		}
-		if len(data) == 1 {
-			m["data"] = data
-		}
-		b, err := json.Marshal(m)
-		if err != nil {
-			fmt.Println(err)
-		}
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.Write(b)
-	})
-	fmt.Println(crud.tableNames)
+	// crud := NewCRUD("root:moss7!@/satisfaction?charset=utf8", func(w http.ResponseWriter, err error, data ...interface{}) {
+	// 	m := make(map[string]interface{})
+	// 	if err != nil {
+	// 		m["success"] = false
+	// 		m["msg"] = err.Error()
+	// 	} else {
+	// 		m["success"] = true
+	// 		m["msg"] = true
+	// 	}
+	// 	if len(data) == 1 {
+	// 		m["data"] = data
+	// 	}
+	// 	b, err := json.Marshal(m)
+	// 	if err != nil {
+	// 		fmt.Println(err)
+	// 	}
+	// 	w.Header().Set("Access-Control-Allow-Origin", "*")
+	// 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	// 	w.Write(b)
+	// })
+	// fmt.Println(crud.tableNames)
 	//crud.Create(&Task{})
 }

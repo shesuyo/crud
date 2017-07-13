@@ -142,7 +142,9 @@ func (r *SQLRows) RawsMapInterface() []map[string]interface{} {
 
 // RawsMap []map[string]string 所有类型都将返回字符串类型
 func (r *SQLRows) RawsMap() []map[string]string {
-	rs := []map[string]string{}
+	rs := make([]map[string]string, 0) //为了JSON输出的时候为[]
+	//rs := []map[string]string{} //这样在JSON输出的时候是null
+
 	//panic: runtime error: invalid memory address or nil pointer dereference
 	if r.err != nil {
 		return rs
@@ -166,6 +168,15 @@ func (r *SQLRows) RawsMap() []map[string]string {
 		rs = append(rs, rowMap)
 	}
 	return rs
+}
+
+//RawMap RawMap
+func (r *SQLRows) RawMap() map[string]string {
+	out := r.RawsMap()
+	if len(out) > 0 {
+		return out[0]
+	}
+	return map[string]string{}
 }
 
 // DoubleSlice 用于追求效率和更低的内存，但是使用比较不方便。
@@ -286,7 +297,9 @@ func (r *SQLRows) Scan(v interface{}) error {
 		return r.err
 	}
 	if r.rows.Next() {
-		return r.rows.Scan(v)
+		err := r.rows.Scan(v)
+		r.rows.Close()
+		return err
 	}
 	return nil
 }

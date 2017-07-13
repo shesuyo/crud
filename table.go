@@ -5,6 +5,13 @@ import "fmt"
 import "strings"
 import "errors"
 
+var (
+	errInsertRepeat = errors.New("重复插入")
+	errSQLSyncPanic = errors.New("SQL语句异常")
+	errInsertData   = errors.New("插入数据库异常")
+	errNoUpdateKey  = errors.New("没有更新主键")
+)
+
 // Table 是对CRUD进一层的封装
 type Table struct {
 	*CRUD
@@ -73,7 +80,7 @@ func (t *Table) Create(m map[string]interface{}, checks ...string) error {
 		}
 		// SELECT COUNT(*) FROM `feedback` WHERE `task_id` = ? AND `member_id` = ?
 		if t.Query(fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s", t.tableName, strings.Join(names, "AND")), values...).Int() > 0 {
-			return errors.New("重复插入")
+			return errInsertRepeat
 		}
 	}
 	ks, vs := ksvs(m)
@@ -85,6 +92,21 @@ func (t *Table) Create(m map[string]interface{}, checks ...string) error {
 		return errors.New("插入数据库异常")
 	}
 	return nil
+}
+
+//Reads 查找
+func (t *Table) Reads(m map[string]interface{}) []map[string]string {
+	//SELECT * FROM address WHERE id = 1 AND uid = 27
+	ks, vs := ksvs(m, " = ? ")
+	return t.Query(fmt.Sprintf("SELECT * FROM %s WHERE %s", t.tableName, strings.Join(ks, "AND")), vs...).RawsMap()
+}
+
+func (t *Table) Read(m map[string]interface{}) map[string]string {
+	rs := t.Reads(m)
+	if len(rs) > 0 {
+		return rs[0]
+	}
+	return map[string]string{}
 }
 
 // Update 更新
@@ -116,7 +138,20 @@ func (t *Table) Update(m map[string]interface{}, keys ...string) error {
 	return nil
 }
 
-// Delete 删除
-func (t *Table) Delete(m map[string]interface{}) error {
+//CreateOrUpdate 创建或者更新
+func (t *Table) CreateOrUpdate(m map[string]interface{}, keys ...string) error {
+	err := t.Create(m, keys...)
+	if err != nil {
+		if err == errInsertRepeat {
+			return t.Update(m, keys...)
+		}
+		return err
+	}
 	return nil
+}
+
+// Delete 删除
+func (t *Table) Delete(m map[string]interface{}) (int64, error) {
+	ks, vs := ksvs(m, " = ? ")
+	return t.Exec(fmt.Sprintf("DELETE FROM %s WHERE %s", t.tableName, strings.Join(ks, "AND")), vs...).RowsAffected()
 }
