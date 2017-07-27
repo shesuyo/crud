@@ -459,9 +459,9 @@ func (api *CRUD) Find(v interface{}, args ...interface{}) {
 	} else if len(args) > 1 {
 		where += args[0].(string)
 	} else {
+		//avoid args[1:]... bounds out of range
 		args = append(args, nil)
 	}
-	fmt.Println(api.tableColumns[tableName])
 	if api.tableColumns[tableName].HaveColumn("is_deleted") {
 		where += " AND is_deleted = 0"
 	}
