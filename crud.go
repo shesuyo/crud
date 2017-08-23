@@ -141,6 +141,8 @@ func (api *CRUD) haveTablename(tableName string) bool {
 	return ok
 }
 
+
+
 // 获取表中所有列名
 func (api *CRUD) getColums(tablename string) Columns {
 	names, ok := api.tableColumns[tablename]
@@ -223,10 +225,16 @@ func (api *CRUD) RowSQL(sql string, args ...interface{}) *SQLRows {
 	CRUD 查询
 */
 
-//RawsMap transfer to query
+//RawsMap transfer to query RawsMap
 func (api *CRUD) RawsMap() []map[string]string {
 	query, args := api.search.Parse()
 	return api.Query(query, args...).RawsMap()
+}
+
+//RawMap transfer to query RawMap
+func (api *CRUD) RawMap() map[string]string {
+	query, args := api.search.Parse()
+	return api.Query(query, args...).RawMap()
 }
 
 //DoubleSlice transfer to query

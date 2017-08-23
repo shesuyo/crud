@@ -110,6 +110,7 @@ func (t *Table) Read(m map[string]interface{}) map[string]string {
 }
 
 // Update 更新
+// 如果map里面有id的话会自动删除id，然后使用id来作为更新的条件。
 func (t *Table) Update(m map[string]interface{}, keys ...string) error {
 	if len(keys) == 0 {
 		keys = append(keys, "id")
