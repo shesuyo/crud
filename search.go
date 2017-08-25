@@ -73,6 +73,14 @@ func (s *search) Fields(args ...string) *search {
 	return s
 }
 
+func (s *search) Count() int {
+	var count int
+	s.fields = []string{"COUNT(*)"}
+	query, args := s.Parse()
+	s.db.Query(query, args...).Find(&count)
+	return count
+}
+
 func (s *search) Where(query string, values ...interface{}) *search {
 	id, err := strconv.Atoi(query)
 	if err != nil {
@@ -202,10 +210,11 @@ func (s *search) warpFieldSingel(field string) (warpStr string, tablename string
 	} else {
 		tablename = s.tableName
 		fieldname = field
-		if field != "*" {
+		switch field {
+		case "*", "COUNT(*)":
+			warpStr = field
+		default:
 			warpStr = "`" + field + "`"
-		} else {
-			warpStr = "*"
 		}
 	}
 	return

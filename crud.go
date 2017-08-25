@@ -112,6 +112,11 @@ func (api *CRUD) dataRender(w http.ResponseWriter, data interface{}) {
 	CRUD search
 */
 
+//Count count(*)
+func (api *CRUD) Count() int {
+	return api.clone().search.Count()
+}
+
 //Where where
 func (api *CRUD) Where(query string, args ...interface{}) *CRUD {
 	return api.clone().search.Where(query, args...).db
@@ -140,8 +145,6 @@ func (api *CRUD) haveTablename(tableName string) bool {
 	_, ok := api.tableColumns[tableName]
 	return ok
 }
-
-
 
 // 获取表中所有列名
 func (api *CRUD) getColums(tablename string) Columns {
@@ -229,6 +232,12 @@ func (api *CRUD) RowSQL(sql string, args ...interface{}) *SQLRows {
 func (api *CRUD) RawsMap() []map[string]string {
 	query, args := api.search.Parse()
 	return api.Query(query, args...).RawsMap()
+}
+
+//RawsMapInterface transfer to query RawsMapInterface
+func (api *CRUD) RawsMapInterface() []map[string]interface{} {
+	query, args := api.search.Parse()
+	return api.Query(query, args...).RawsMapInterface()
 }
 
 //RawMap transfer to query RawMap
