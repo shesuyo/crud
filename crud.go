@@ -112,11 +112,6 @@ func (api *CRUD) dataRender(w http.ResponseWriter, data interface{}) {
 	CRUD search
 */
 
-//Count count(*)
-func (api *CRUD) Count() int {
-	return api.clone().search.Count()
-}
-
 //Where where
 func (api *CRUD) Where(query string, args ...interface{}) *CRUD {
 	return api.clone().search.Where(query, args...).db
@@ -130,6 +125,40 @@ func (api *CRUD) Joins(query string, args ...string) *CRUD {
 //Fields fields
 func (api *CRUD) Fields(args ...string) *CRUD {
 	return api.clone().search.Fields(args...).db
+}
+
+//RawsMap transfer to query RawsMap
+func (api *CRUD) RawsMap() []map[string]string {
+	query, args := api.search.Parse()
+	return api.Query(query, args...).RawsMap()
+}
+
+//RawsMapInterface transfer to query RawsMapInterface
+func (api *CRUD) RawsMapInterface() []map[string]interface{} {
+	query, args := api.search.Parse()
+	return api.Query(query, args...).RawsMapInterface()
+}
+
+//RawMap transfer to query RawMap
+func (api *CRUD) RawMap() map[string]string {
+	query, args := api.search.Parse()
+	return api.Query(query, args...).RawMap()
+}
+
+//DoubleSlice transfer to query
+func (api *CRUD) DoubleSlice() (map[string]int, [][]string) {
+	query, args := api.search.Parse()
+	return api.Query(query, args...).DoubleSlice()
+}
+
+//Count count(*)
+func (api *CRUD) Count() int {
+	return api.clone().search.Count()
+}
+
+//Struct Struct
+func (api *CRUD) Struct(v interface{}) {
+	api.search.Struct(v)
 }
 
 /*
@@ -227,30 +256,6 @@ func (api *CRUD) RowSQL(sql string, args ...interface{}) *SQLRows {
 /*
 	CRUD 查询
 */
-
-//RawsMap transfer to query RawsMap
-func (api *CRUD) RawsMap() []map[string]string {
-	query, args := api.search.Parse()
-	return api.Query(query, args...).RawsMap()
-}
-
-//RawsMapInterface transfer to query RawsMapInterface
-func (api *CRUD) RawsMapInterface() []map[string]interface{} {
-	query, args := api.search.Parse()
-	return api.Query(query, args...).RawsMapInterface()
-}
-
-//RawMap transfer to query RawMap
-func (api *CRUD) RawMap() map[string]string {
-	query, args := api.search.Parse()
-	return api.Query(query, args...).RawMap()
-}
-
-//DoubleSlice transfer to query
-func (api *CRUD) DoubleSlice() (map[string]int, [][]string) {
-	query, args := api.search.Parse()
-	return api.Query(query, args...).DoubleSlice()
-}
 
 // Query 用于底层查询，一般是SELECT语句
 func (api *CRUD) Query(sql string, args ...interface{}) *SQLRows {
@@ -575,7 +580,6 @@ func (api *CRUD) FindAll(v interface{}, args ...interface{}) {
 				if ok {
 					api.FindAll(rv.Field(i).Addr().Interface(), con...)
 				}
-
 				//fmt.Println("slice:", rv.Field(i).Type().Elem().Name())
 				//api.FindAll(rv.Field(i).Addr().Interface())
 			}

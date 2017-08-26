@@ -240,6 +240,7 @@ func (r *SQLRows) String() string {
 func (r *SQLRows) Find(v interface{}) {
 	m := r.RawsMapInterface()
 	rv := reflect.ValueOf(v).Elem()
+	//如果查询是数组的话
 	if rv.Kind() == reflect.Slice {
 		for idx := range m {
 			ele := reflect.New(rv.Type().Elem())
@@ -254,7 +255,10 @@ func (r *SQLRows) Find(v interface{}) {
 		}
 
 	} else {
-		if len(m) == 1 {
+		//查询的是一个结构体或者是一个int,一个string
+		//以后如果只是一个结果的话，支持ToInt/ToString/ToInterface
+		//这里的int要去除掉
+		if len(m) >= 1 {
 			switch rv.Kind() {
 			case reflect.Struct:
 				elem := reflect.ValueOf(v).Elem()

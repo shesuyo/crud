@@ -73,14 +73,6 @@ func (s *search) Fields(args ...string) *search {
 	return s
 }
 
-func (s *search) Count() int {
-	var count int
-	s.fields = []string{"COUNT(*)"}
-	query, args := s.Parse()
-	s.db.Query(query, args...).Find(&count)
-	return count
-}
-
 func (s *search) Where(query string, values ...interface{}) *search {
 	id, err := strconv.Atoi(query)
 	if err != nil {
@@ -218,4 +210,20 @@ func (s *search) warpFieldSingel(field string) (warpStr string, tablename string
 		}
 	}
 	return
+}
+
+//结果展示
+
+func (s *search) Struct(v interface{}) {
+	query, args := s.Parse()
+	// s.db.Query(query, args...).Find(v)
+	s.db.FindAll(v, append([]interface{}{query}, args...)...)
+}
+
+func (s *search) Count() int {
+	var count int
+	s.fields = []string{"COUNT(*)"}
+	query, args := s.Parse()
+	s.db.Query(query, args...).Find(&count)
+	return count
 }
