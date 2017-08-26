@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"reflect"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -159,6 +160,34 @@ func (api *CRUD) Count() int {
 //Struct Struct
 func (api *CRUD) Struct(v interface{}) {
 	api.search.Struct(v)
+}
+
+//Int 如果指定字段，则返回指定字段的int值，否则返回第一个字段作为int值返回。
+func (api *CRUD) Int(args ...string) int {
+	raw := api.RawMap()
+	if len(args) == 0 {
+		for _, v := range raw {
+			i, _ := strconv.Atoi(v)
+			return i
+		}
+	} else {
+		i, _ := strconv.Atoi(raw[args[0]])
+		return i
+	}
+	return 0
+}
+
+//String like int
+func (api *CRUD) String(args ...string) string {
+	raw := api.RawMap()
+	if len(args) == 0 {
+		for _, v := range raw {
+			return v
+		}
+	} else {
+		return raw[args[0]]
+	}
+	return ""
 }
 
 /*
