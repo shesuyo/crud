@@ -114,8 +114,8 @@ func (api *CRUD) dataRender(w http.ResponseWriter, data interface{}) {
 */
 
 //Where where
-func (api *CRUD) Where(query string, args ...interface{}) *CRUD {
-	return api.clone().search.Where(query, args...).db
+func (api *CRUD) Where(query interface{}, args ...interface{}) *CRUD {
+	return api.clone().search.Where(fmt.Sprintf("%v", query), args...).db
 }
 
 //Joins joins
