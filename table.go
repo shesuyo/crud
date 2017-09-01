@@ -69,7 +69,7 @@ func (t *Table) IDIn(ids ...interface{}) *SQLRows {
 // Create 创建
 // check 如果有，则会判断表里面以这几个字段为唯一的话，数据库是否存在此条数据，如果有就不插入了。
 //
-func (t *Table) Create(m map[string]interface{}, checks ...string) error {
+func (t *Table) Create(m map[string]interface{}, checks ...string) (int64, error) {
 	//INSERT INTO `feedback` (`task_id`, `template_question_id`, `question_options_id`, `suggestion`, `member_id`) VALUES ('1', '1', '1', '1', '1')
 	if len(checks) > 0 {
 		names := []string{}
@@ -80,18 +80,18 @@ func (t *Table) Create(m map[string]interface{}, checks ...string) error {
 		}
 		// SELECT COUNT(*) FROM `feedback` WHERE `task_id` = ? AND `member_id` = ?
 		if t.Query(fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s", t.tableName, strings.Join(names, "AND")), values...).Int() > 0 {
-			return errInsertRepeat
+			return 0, errInsertRepeat
 		}
 	}
 	ks, vs := ksvs(m)
-	e, err := t.Exec(fmt.Sprintf("INSERT INTO `%s` (%s) VALUES (%s)", t.tableName, strings.Join(ks, ","), argslice(len(ks))), vs...).RowsAffected()
+	id, err := t.Exec(fmt.Sprintf("INSERT INTO `%s` (%s) VALUES (%s)", t.tableName, strings.Join(ks, ","), argslice(len(ks))), vs...).LastInsertId()
 	if err != nil {
-		return errors.New("SQL语句异常")
+		return 0, errors.New("SQL语句异常")
 	}
-	if e <= 0 {
-		return errors.New("插入数据库异常")
+	if id <= 0 {
+		return 0, errors.New("插入数据库异常")
 	}
-	return nil
+	return id, nil
 }
 
 //Reads 查找
@@ -141,7 +141,7 @@ func (t *Table) Update(m map[string]interface{}, keys ...string) error {
 
 //CreateOrUpdate 创建或者更新
 func (t *Table) CreateOrUpdate(m map[string]interface{}, keys ...string) error {
-	err := t.Create(m, keys...)
+	_, err := t.Create(m, keys...)
 	if err != nil {
 		if err == errInsertRepeat {
 			return t.Update(m, keys...)
