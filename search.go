@@ -82,6 +82,24 @@ func (s *search) Where(query string, values ...interface{}) *search {
 	}
 	return s
 }
+
+func (s *search) In(field string, args ...interface{}) *search {
+	//In没有参数的话SQL就会报错
+	if len(args) == 0 {
+		return s
+	}
+	s.whereConditions = append(s.whereConditions, wherecon{query: fmt.Sprintf("%s IN (%s)", field, placeholder(len(args))), args: args})
+	return s
+}
+
+func placeholder(n int) string {
+	holder := []string{}
+	for i := 0; i < n; i++ {
+		holder = append(holder, "?")
+	}
+	return strings.Join(holder, ",")
+}
+
 func (s *search) Joins(tablename string, condition ...string) *search {
 	if len(condition) == 1 {
 		s.joinConditions = append(s.joinConditions, joincon{tablename: tablename, condition: condition[0]})

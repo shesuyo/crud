@@ -118,6 +118,11 @@ func (api *CRUD) Where(query interface{}, args ...interface{}) *CRUD {
 	return api.clone().search.Where(fmt.Sprintf("%v", query), args...).db
 }
 
+//In In
+func (api *CRUD) In(field string, args ...interface{}) *CRUD {
+	return api.clone().search.In(field, args...).db
+}
+
 //Joins joins
 func (api *CRUD) Joins(query string, args ...string) *CRUD {
 	return api.clone().search.Joins(query, args...).db
@@ -536,7 +541,7 @@ func (api *CRUD) connection(target string, got reflect.Value) ([]interface{}, bo
 	ttn := target                      //target table name
 	gtn := ToDBName(got.Type().Name()) // got table name
 
-	fmt.Println(ttn, gtn)
+	//fmt.Println(ttn, gtn)
 
 	if api.tableColumns[gtn].HaveColumn(ttn + "_id") {
 		// got: question_option question_id
@@ -583,38 +588,39 @@ func (api *CRUD) connection(target string, got reflect.Value) ([]interface{}, bo
 // FindAll 在需要的时候将自动查询结构体子结构体
 func (api *CRUD) FindAll(v interface{}, args ...interface{}) {
 	api.Find(v, args...)
-	//然后再查找
+	//首先查找字段，然后再查找结构体和Slice
 	/*
 		首先实现结构体
 		//不处理指针
 
 	*/
 	rv := reflect.ValueOf(v).Elem()
-	if rv.Kind() == reflect.Struct {
-		for i := 0; i < rv.NumField(); i++ {
-			if rv.Field(i).Kind() == reflect.Struct {
-				//fmt.Println("struct:", rv.Field(i).Type().Name())
-				// member feedback
-				// dbn := ToDBName(rv.Field(i).Type().Name())
-				fmt.Println(ToDBName(rv.Field(i).Type().Name()))
-				con, ok := api.connection(ToDBName(rv.Field(i).Type().Name()), rv)
-				if ok {
-					api.FindAll(rv.Field(i).Addr().Interface(), con...)
-				}
+	switch rv.Kind() {
+	case reflect.Struct:
+		api.setStructField(rv)
+	case reflect.Slice:
+		for i := 0; i < rv.Len(); i++ {
+			api.setStructField(rv.Index(i))
+		}
+	default:
+		fmt.Println("unsupport type")
+	}
+}
 
-				//api.FindAll(rv.Field(i).Addr().Interface())
+func (api *CRUD) setStructField(rv reflect.Value) {
+	for i := 0; i < rv.NumField(); i++ {
+		if rv.Field(i).Kind() == reflect.Struct {
+			fmt.Println(ToDBName(rv.Field(i).Type().Name()))
+			con, ok := api.connection(ToDBName(rv.Field(i).Type().Name()), rv)
+			if ok {
+				api.FindAll(rv.Field(i).Addr().Interface(), con...)
 			}
-			if rv.Field(i).Kind() == reflect.Slice {
-				con, ok := api.connection(ToDBName(rv.Field(i).Type().Elem().Name()), rv)
-				if ok {
-					api.FindAll(rv.Field(i).Addr().Interface(), con...)
-				}
-				//fmt.Println("slice:", rv.Field(i).Type().Elem().Name())
-				//api.FindAll(rv.Field(i).Addr().Interface())
+		}
+		if rv.Field(i).Kind() == reflect.Slice {
+			con, ok := api.connection(ToDBName(rv.Field(i).Type().Elem().Name()), rv)
+			if ok {
+				api.FindAll(rv.Field(i).Addr().Interface(), con...)
 			}
 		}
 	}
-
-	//然后再实现Slice
-
 }
