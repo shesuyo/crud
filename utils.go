@@ -1,284 +1,57 @@
-/*Package crud crud
-
-SOURCE FILE LICENSE(utils.go)
-The MIT License (MIT)
-
-Copyright (c) 2013-NOW  Jinzhu <wosmvp@gmail.com>
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-
-FILE MODIFIED BY shesuyo <shesuyo@gmail.com>
-*/
 package crud
 
 import (
-	"bytes"
-	"database/sql/driver"
-	"fmt"
-	"reflect"
-	"regexp"
-	"runtime"
 	"strings"
-	"sync"
-	"time"
+
+	"ekt.com/ekt/x/safemap"
 )
 
-// NowFunc returns current time, this function is exported in order to be able
-// to give the flexibility to the developer to customize it according to their
-// needs, e.g:
-//    gorm.NowFunc = func() time.Time {
-//      return time.Now().UTC()
-//    }
-var NowFunc = func() time.Time {
-	return time.Now()
-}
-
-// Copied from golint
-var commonInitialisms = []string{"API", "ASCII", "CPU", "CSS", "DNS", "EOF", "GUID", "HTML", "HTTP", "HTTPS", "ID", "IP", "JSON", "LHS", "QPS", "RAM", "RHS", "RPC", "SLA", "SMTP", "SSH", "TLS", "TTL", "UI", "UID", "UUID", "URI", "URL", "UTF8", "VM", "XML", "XSRF", "XSS"}
-var commonInitialismsReplacer *strings.Replacer
-
-var goSrcRegexp = regexp.MustCompile(`jinzhu/gorm/.*.go`)
-var goTestRegexp = regexp.MustCompile(`jinzhu/gorm/.*test.go`)
+var (
+	fullTitles         = []string{"API", "ASCII", "CPU", "CSS", "DNS", "EOF", "GUID", "HTML", "HTTP", "HTTPS", "ID", "IP", "JSON", "LHS", "QPS", "RAM", "RHS", "RPC", "SLA", "SMTP", "SSH", "TLS", "TTL", "UI", "UID", "UUID", "URI", "URL", "UTF8", "VM", "XML", "XSRF", "XSS", "PY"}
+	fullTitlesReplacer *strings.Replacer
+	//m和rm公用同一个
+	dbNameMap = safemap.NewMapStringString()
+)
 
 func init() {
-	var commonInitialismsForReplacer []string
-	for _, initialism := range commonInitialisms {
-		commonInitialismsForReplacer = append(commonInitialismsForReplacer, initialism, strings.Title(strings.ToLower(initialism)))
+	var oldnew []string
+	for _, title := range fullTitles {
+		oldnew = append(oldnew, title, "_"+strings.ToLower(title))
 	}
-	commonInitialismsReplacer = strings.NewReplacer(commonInitialismsForReplacer...)
+	for i := 'A'; i < 'Z'; i++ {
+		oldnew = append(oldnew, string(i), "_"+string(i+32))
+	}
+	fullTitlesReplacer = strings.NewReplacer(oldnew...)
 }
 
-type safeMap struct {
-	m  map[string]string
-	rm map[string]string
-	l  *sync.RWMutex
-}
-
-func (s *safeMap) Set(key string, value string) {
-	s.l.Lock()
-	defer s.l.Unlock()
-	s.m[key] = value
-	s.rm[value] = key
-}
-
-func (s *safeMap) Get(key string) string {
-	s.l.RLock()
-	defer s.l.RUnlock()
-	return s.m[key]
-}
-
-func (s *safeMap) RGet(key string) string {
-	return s.rm[key]
-}
-
-func newSafeMap() *safeMap {
-	return &safeMap{l: new(sync.RWMutex), m: make(map[string]string), rm: make(map[string]string)}
-}
-
-var smap = newSafeMap()
-
-type strCase bool
-
-const (
-	lower strCase = false
-	upper strCase = true
-)
-
-// ToStructName convert string to struct name
-func ToStructName(name string) string {
-	return smap.RGet(name)
-}
-
-// ToDBName convert string to db name
+//ToDBName 将结构体的字段名字转换成对应数据库字段名
+//比gorm速度快一倍
 func ToDBName(name string) string {
-	if v := smap.Get(name); v != "" {
-		return v
+	val, ok := dbNameMap.Get(name)
+	if ok {
+		return val
 	}
-
-	if name == "" {
-		return ""
-	}
-
-	var (
-		value                        = commonInitialismsReplacer.Replace(name)
-		buf                          = bytes.NewBufferString("")
-		lastCase, currCase, nextCase strCase
-	)
-
-	for i, v := range value[:len(value)-1] {
-		nextCase = strCase(value[i+1] >= 'A' && value[i+1] <= 'Z')
-		if i > 0 {
-			if currCase == upper {
-				if lastCase == upper && nextCase == upper {
-					buf.WriteRune(v)
-				} else {
-					if value[i-1] != '_' && value[i+1] != '_' {
-						buf.WriteRune('_')
-					}
-					buf.WriteRune(v)
-				}
-			} else {
-				buf.WriteRune(v)
-				if i == len(value)-2 && nextCase == upper {
-					buf.WriteRune('_')
-				}
-			}
-		} else {
-			currCase = upper
-			buf.WriteRune(v)
-		}
-		lastCase = currCase
-		currCase = nextCase
-	}
-
-	buf.WriteByte(value[len(value)-1])
-
-	s := strings.ToLower(buf.String())
-	smap.Set(name, s)
-	return s
+	return toDBName(name)
 }
 
-func indirect(reflectValue reflect.Value) reflect.Value {
-	for reflectValue.Kind() == reflect.Ptr {
-		reflectValue = reflectValue.Elem()
-	}
-	return reflectValue
-}
-
-func toQueryMarks(primaryValues [][]interface{}) string {
-	var results []string
-
-	for _, primaryValue := range primaryValues {
-		var marks []string
-		for range primaryValue {
-			marks = append(marks, "?")
-		}
-
-		if len(marks) > 1 {
-			results = append(results, fmt.Sprintf("(%v)", strings.Join(marks, ",")))
-		} else {
-			results = append(results, strings.Join(marks, ""))
-		}
-	}
-	return strings.Join(results, ",")
-}
-
-func toQueryValues(values [][]interface{}) (results []interface{}) {
-	for _, value := range values {
-		for _, v := range value {
-			results = append(results, v)
-		}
-	}
-	return
-}
-
-func fileWithLineNum() string {
-	for i := 2; i < 15; i++ {
-		_, file, line, ok := runtime.Caller(i)
-		if ok && (!goSrcRegexp.MatchString(file) || goTestRegexp.MatchString(file)) {
-			return fmt.Sprintf("%v:%v", file, line)
-		}
+//ToStructName 数据库字段名转换成对应结构体名
+func ToStructName(name string) string {
+	val, ok := dbNameMap.Get(name)
+	if ok {
+		return val
 	}
 	return ""
 }
 
-func toSearchableMap(attrs ...interface{}) (result interface{}) {
-	if len(attrs) > 1 {
-		if str, ok := attrs[0].(string); ok {
-			result = map[string]interface{}{str: attrs[1]}
-		}
-	} else if len(attrs) == 1 {
-		if attr, ok := attrs[0].(map[string]interface{}); ok {
-			result = attr
-		}
-
-		if attr, ok := attrs[0].(interface{}); ok {
-			result = attr
-		}
-	}
-	return
-}
-
-func equalAsString(a interface{}, b interface{}) bool {
-	return toString(a) == toString(b)
-}
-
-func toString(str interface{}) string {
-	if values, ok := str.([]interface{}); ok {
-		var results []string
-		for _, value := range values {
-			results = append(results, toString(value))
-		}
-		return strings.Join(results, "_")
-	} else if bytes, ok := str.([]byte); ok {
-		return string(bytes)
-	} else if reflectValue := reflect.Indirect(reflect.ValueOf(str)); reflectValue.IsValid() {
-		return fmt.Sprintf("%v", reflectValue.Interface())
+func toDBName(name string) string {
+	dbName := fullTitlesReplacer.Replace(name)
+	if len(dbName) >= 1 {
+		dbNameMap.Set(name, dbName[1:])
+		dbNameMap.Set(dbName[1:], name)
+		return dbName[1:]
 	}
 	return ""
 }
-
-func makeSlice(elemType reflect.Type) interface{} {
-	if elemType.Kind() == reflect.Slice {
-		elemType = elemType.Elem()
-	}
-	sliceType := reflect.SliceOf(elemType)
-	slice := reflect.New(sliceType)
-	slice.Elem().Set(reflect.MakeSlice(sliceType, 0, 0))
-	return slice.Interface()
-}
-
-func strInSlice(a string, list []string) bool {
-	for _, b := range list {
-		if b == a {
-			return true
-		}
-	}
-	return false
-}
-
-// getValueFromFields return given fields's value
-func getValueFromFields(value reflect.Value, fieldNames []string) (results []interface{}) {
-	// If value is a nil pointer, Indirect returns a zero Value!
-	// Therefor we need to check for a zero value,
-	// as FieldByName could panic
-	if indirectValue := reflect.Indirect(value); indirectValue.IsValid() {
-		for _, fieldName := range fieldNames {
-			if fieldValue := indirectValue.FieldByName(fieldName); fieldValue.IsValid() {
-				result := fieldValue.Interface()
-				if r, ok := result.(driver.Valuer); ok {
-					result, _ = r.Value()
-				}
-				results = append(results, result)
-			}
-		}
-	}
-	return
-}
-
-func addExtraSpaceIfExist(str string) string {
-	if str != "" {
-		return " " + str
-	}
-	return ""
-}
-
 func ksvs(m map[string]interface{}, keyTail ...string) ([]string, []interface{}) {
 	kt := ""
 	ks := []string{}
