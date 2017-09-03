@@ -9,7 +9,6 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
-	"time"
 
 	_ "github.com/go-sql-driver/mysql" //
 )
@@ -253,7 +252,6 @@ func (api *CRUD) Exec(sql string, args ...interface{}) sql.Result {
 	ret, err := db.Exec(sql, args...)
 	if err != nil {
 		api.stack(err, sql, args...)
-
 	}
 	return ret
 }
@@ -263,165 +261,167 @@ func (api *CRUD) DB() *sql.DB {
 	return api.db
 }
 
-// Create 创建 旧的 TODO
-/*
-	Create 用于创建
-
-*/
-func (api *CRUD) Create(v interface{}, w http.ResponseWriter, r *http.Request) {
+// FormCreate 创建，表单创建。
+func (api *CRUD) FormCreate(v interface{}, w http.ResponseWriter, r *http.Request) {
 	tableName := getStructDBName(v)
 	m := parseRequest(v, r, C)
 	if m == nil || len(m) == 0 {
 		api.argsErrorRender(w)
 		return
 	}
-	names := []string{}
-	values := []string{}
-	args := []interface{}{}
-	cols := api.getColums(tableName)
-	if cols.HaveColumn("created_at") {
-		m["created_at"] = time.Now().Format(TimeFormat)
-	}
-	if cols.HaveColumn("is_deleted") {
-		m["is_deleted"] = 0
-	}
-	if cols.HaveColumn("updated_at") {
-		m["updated_at"] = time.Now().Format(TimeFormat)
-	}
-	for k, v := range m {
-		names = append(names, "`"+k+"`")
-		values = append(values, "?")
-		args = append(args, v)
-	}
-	ret := api.Exec(fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", tableName, strings.Join(names, ","), strings.Join(values, ",")), args...)
-	id, err := ret.LastInsertId()
+	// names := []string{}
+	// values := []string{}
+	// args := []interface{}{}
+
+	//cols := api.getColums(tableName)
+	// if cols.HaveColumn("created_at") {
+	// 	m["created_at"] = time.Now().Format(TimeFormat)
+	// }
+	// if cols.HaveColumn("is_deleted") {1
+	// 	m["is_deleted"] = 0
+	// }
+	// if cols.HaveColumn("updated_at") {
+	// 	m["updated_at"] = time.Now().Format(TimeFormat)
+	// }
+
+	id, err := api.Table(tableName).Create(m)
 	if err != nil {
 		api.execErrorRender(w)
 		return
 	}
 	m["id"] = id
-	delete(m, "is_deleted")
+	//delete(m, "is_deleted")
 	api.dataRender(w, m)
+
+	// for k, v := range m {
+	// 	names = append(names, "`"+k+"`")
+	// 	values = append(values, "?")
+	// 	args = append(args, v)
+	// }
+	// ret := api.Exec(fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", tableName, strings.Join(names, ","), strings.Join(values, ",")), args...)
+	// id, err := ret.LastInsertId()
+
 }
 
+// FormRead 表单查找
 /*
 	查找
 	id = 1
 	id = 1  AND hospital_id = 1
 
+	CRUD FormRead -> table Read
 */
-func (api *CRUD) Read(v interface{}, w http.ResponseWriter, r *http.Request) {
+func (api *CRUD) FormRead(v interface{}, w http.ResponseWriter, r *http.Request) {
 	//	这里传进来的参数一定是要有用的参数，如果是没有用的参数被传进来了，那么会报参数错误，或者显示执行成功数据会乱。
 	//	这里处理last_XXX
 	//	处理翻页的问题
 	//	首先判断这个里面有没有这个字段
 	m := parseRequest(v, r, R)
-	//	if m == nil || len(m) == 0 {
-	//		api.argsErrorRender(w)
-	//		return
-	//	}
 	//	看一下是不是其他表关联查找
 	tableName := getStructDBName(v)
-	cols := api.getColums(tableName)
-	ctn := "" //combine table name
-	//fk := ""
-	//var fkv interface{}
-	for k := range m {
-		if !cols.HaveColumn(k) {
-			if strings.Contains(k, "_id") {
-				atn := strings.TrimRight(k, "_id") //another table name
-				tmptn := atn + "_" + tableName
-				api.X("检查表" + tmptn)
-				if api.haveTablename(tmptn) {
-					if api.tableColumns[tmptn].HaveColumn(k) {
-						ctn = tmptn
-					}
-				}
-				api.X("检查表" + tmptn)
-				tmptn = tableName + "_" + atn
-				if api.haveTablename(tmptn) {
-					if api.tableColumns[tmptn].HaveColumn(k) {
-						ctn = tmptn
-					}
-				}
-				//				if ctn == "" {
-				//					api.argsErrorRender(w)
-				//					return
-				//				}
-			}
-		}
-	}
-	if api.tableColumns[tableName].HaveColumn("is_deleted") {
-		m["is_deleted"] = "0"
-	}
-	if ctn == "" {
-		//如果没有设置ID，则查找所有的。
-		if m == nil || len(m) == 0 {
-			data := api.Query(fmt.Sprintf("SELECT * FROM `%s`", tableName)).RawsMapInterface()
-			api.dataRender(w, data)
-		} else {
-			ks, vs := ksvs(m, " = ? ")
-			data := api.Query(fmt.Sprintf("SELECT * FROM `%s` WHERE %s", tableName, strings.Join(ks, "AND")), vs...).RawsMapInterface()
-			api.dataRender(w, data)
-		}
-	} else {
-		ks, vs := ksvs(m, " = ? ")
-		//SELECT `section`.* FROM `group_section` LEFT JOIN section ON group_section.section_id = section.id WHERE group_id = 1
-		data := api.Query(fmt.Sprintf("SELECT `%s`.* FROM `%s` LEFT JOIN `%s` ON `%s`.`%s` = `%s`.`%s` WHERE %s", tableName, ctn, tableName, ctn, tableName+"_id", tableName, "id", strings.Join(ks, "AND")), vs...).RawsMapInterface()
-		api.dataRender(w, data)
-	}
+	data := api.Table(tableName).Reads(m)
+	api.dataRender(w, data)
+	// cols := api.getColums(tableName)
+	// ctn := "" //combine table name
+	// for k := range m {
+	// 	if !cols.HaveColumn(k) {
+	// 		if strings.Contains(k, "_id") {
+	// 			atn := strings.TrimRight(k, "_id") //another table name
+	// 			tmptn := atn + "_" + tableName
+	// 			//api.X("检查表" + tmptn)
+	// 			if api.haveTablename(tmptn) {
+	// 				if api.tableColumns[tmptn].HaveColumn(k) {
+	// 					ctn = tmptn
+	// 				}
+	// 			}
+	// 			//api.X("检查表" + tmptn)
+	// 			tmptn = tableName + "_" + atn
+	// 			if api.haveTablename(tmptn) {
+	// 				if api.tableColumns[tmptn].HaveColumn(k) {
+	// 					ctn = tmptn
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// }
+	// if api.tableColumns[tableName].HaveColumn("is_deleted") {
+	// 	m["is_deleted"] = "0"
+	// }
+	// if ctn == "" {
+	// 	//如果没有设置ID，则查找所有的。
+	// 	if m == nil || len(m) == 0 {
+	// 		data := api.Query(fmt.Sprintf("SELECT * FROM `%s`", tableName)).RawsMapInterface()
+	// 		api.dataRender(w, data)
+	// 	} else {
+	// 		ks, vs := ksvs(m, " = ? ")
+	// 		data := api.Query(fmt.Sprintf("SELECT * FROM `%s` WHERE %s", tableName, strings.Join(ks, "AND")), vs...).RawsMapInterface()
+	// 		api.dataRender(w, data)
+	// 	}
+	// } else {
+	// 	ks, vs := ksvs(m, " = ? ")
+	// 	//SELECT `section`.* FROM `group_section` LEFT JOIN section ON group_section.section_id = section.id WHERE group_id = 1
+	// 	data := api.Query(fmt.Sprintf("SELECT `%s`.* FROM `%s` LEFT JOIN `%s` ON `%s`.`%s` = `%s`.`%s` WHERE %s", tableName, ctn, tableName, ctn, tableName+"_id", tableName, "id", strings.Join(ks, "AND")), vs...).RawsMapInterface()
+	// 	api.dataRender(w, data)
+	// }
 }
 
-// Update 更新
-func (api *CRUD) Update(v interface{}, w http.ResponseWriter, r *http.Request) {
-	fmt.Println(r.Form)
+// FormUpdate 表单更新
+func (api *CRUD) FormUpdate(v interface{}, w http.ResponseWriter, r *http.Request) {
 	tableName := getStructDBName(v)
 	m := parseRequest(v, r, R)
 	if m == nil || len(m) == 0 {
 		api.argsErrorRender(w)
 		return
 	}
+	err := api.Table(tableName).Update(m)
+	if err != nil {
+		api.execErrorRender(w)
+		return
+	}
+	api.ExecSuccessRender(w)
 	//	UPDATE task SET name = ? WHERE id = 3;
 	//	现在只支持根据ID进行更新
-	id := m["id"]
-	delete(m, "id")
-	if api.tableColumns[tableName].HaveColumn("updated_at") {
-		m["updated_at"] = time.Now().Format(TimeFormat)
-	}
-	ks, vs := ksvs(m, " = ? ")
-	vs = append(vs, id)
-	_, err := api.Exec(fmt.Sprintf("UPDATE `%s` SET %s WHERE %s = ?", tableName, strings.Join(ks, ","), "id"), vs...).RowsAffected()
-	if err != nil {
-		api.execErrorRender(w)
-		return
-	}
-	api.ExecSuccessRender(w)
+	// id := m["id"]
+	// delete(m, "id")
+	// if api.tableColumns[tableName].HaveColumn("updated_at") {
+	// 	m["updated_at"] = time.Now().Format(TimeFormat)
+	// }
+	// ks, vs := ksvs(m, " = ? ")
+	// vs = append(vs, id)
+	// _, err := api.Exec(fmt.Sprintf("UPDATE `%s` SET %s WHERE %s = ?", tableName, strings.Join(ks, ","), "id"), vs...).RowsAffected()
+	// if err != nil {
+	// 	api.execErrorRender(w)
+	// 	return
+	// }
+
 }
 
-// Delete 删除
-func (api *CRUD) Delete(v interface{}, w http.ResponseWriter, r *http.Request) {
+// FormDelete 表单删除
+func (api *CRUD) FormDelete(v interface{}, w http.ResponseWriter, r *http.Request) {
 	tableName := getStructDBName(v)
 	m := parseRequest(v, r, R)
 	if m == nil || len(m) == 0 {
 		api.argsErrorRender(w)
 		return
 	}
-	if api.tableColumns[tableName].HaveColumn("is_deleted") {
-		if api.tableColumns[tableName].HaveColumn("deleted_at") {
-			r.Form["deleted_at"] = []string{time.Now().Format(TimeFormat)}
-		}
-		r.Form["is_deleted"] = []string{"1"}
-		api.Update(v, w, r)
-		return
-	}
-	//	现在只支持根据ID进行删除
-	ks, vs := ksvs(m, " = ? ")
-	_, err := api.Exec(fmt.Sprintf("DELETE FROM %s WHERE %s ", tableName, strings.Join(ks, "AND")), vs...).RowsAffected()
+	_, err := api.Table(tableName).Delete(m)
 	if err != nil {
 		api.execErrorRender(w)
 		return
 	}
 	api.ExecSuccessRender(w)
+	// if api.tableColumns[tableName].HaveColumn("is_deleted") {
+	// 	if api.tableColumns[tableName].HaveColumn("deleted_at") {
+	// 		r.Form["deleted_at"] = []string{time.Now().Format(TimeFormat)}
+	// 	}
+	// 	r.Form["is_deleted"] = []string{"1"}
+	// 	api.Update(v, w, r)
+	// 	return
+	// }
+	//	现在只支持根据ID进行删除
+	// ks, vs := ksvs(m, " = ? ")
+	// _, err := api.Exec(fmt.Sprintf("DELETE FROM %s WHERE %s ", tableName, strings.Join(ks, "AND")), vs...).RowsAffected()
+
 }
 
 // Find 将查找数据放到结构体里面

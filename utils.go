@@ -1,6 +1,7 @@
 package crud
 
 import (
+	"reflect"
 	"strings"
 
 	"ekt.com/ekt/x/safemap"
@@ -74,4 +75,15 @@ func argslice(l int) string {
 		s = append(s, "?")
 	}
 	return strings.Join(s, ",")
+}
+
+//structToMap 将结构体转换成map[string]interface{}
+func structToMap(val interface{}) map[string]interface{} {
+	m := map[string]interface{}{}
+	v := reflect.ValueOf(val)
+	t := reflect.TypeOf(val)
+	for i, num := 0, v.NumField(); i < num; i++ {
+		m[ToDBName(t.Field(i).Name)] = v.Field(i).Interface()
+	}
+	return m
 }

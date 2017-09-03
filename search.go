@@ -233,7 +233,7 @@ func (s *search) warpFieldSingel(field string) (warpStr string, tablename string
 //结果展示
 
 //RawsMap transfer to query RawsMap
-func (s *search) RawsMap() []map[string]string {
+func (s *search) RawsMap() RowsMap {
 	query, args := s.Parse()
 	return s.db.Query(query, args...).RawsMap()
 }
@@ -255,16 +255,6 @@ func (s *search) DoubleSlice() (map[string]int, [][]string) {
 	query, args := s.Parse()
 	return s.db.Query(query, args...).DoubleSlice()
 }
-
-// //Count count(*)
-// func (s *search) Count() int {
-// 	return api.clone().search.Count()
-// }
-
-// //Struct Struct
-// func (s *search) Struct(v interface{}) {
-// 	api.search.Struct(v)
-// }
 
 //Int 如果指定字段，则返回指定字段的int值，否则返回第一个字段作为int值返回。
 func (s *search) Int(args ...string) int {
@@ -296,7 +286,6 @@ func (s *search) String(args ...string) string {
 
 func (s *search) Struct(v interface{}) {
 	query, args := s.Parse()
-	// s.db.Query(query, args...).Find(v)
 	s.db.FindAll(v, append([]interface{}{query}, args...)...)
 }
 

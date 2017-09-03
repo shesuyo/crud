@@ -140,8 +140,25 @@ func (r *SQLRows) RawsMapInterface() []map[string]interface{} {
 	return rs
 }
 
-// RawsMap []map[string]string 所有类型都将返回字符串类型
-func (r *SQLRows) RawsMap() []map[string]string {
+//RowsMap 多行
+type RowsMap []map[string]string
+
+//Pluck 取出中间的一列
+func (rm RowsMap) Pluck(key string) []string {
+	var vs []string
+	for _, v := range rm {
+		vs = append(vs, v[key])
+	}
+	return vs
+}
+
+//RawsMap alias RowsMap
+func (r *SQLRows) RawsMap() RowsMap {
+	return r.RowsMap()
+}
+
+// RowsMap []map[string]string 所有类型都将返回字符串类型
+func (r *SQLRows) RowsMap() RowsMap {
 	rs := make([]map[string]string, 0) //为了JSON输出的时候为[]
 	//rs := []map[string]string{} //这样在JSON输出的时候是null
 
