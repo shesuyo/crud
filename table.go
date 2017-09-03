@@ -5,13 +5,6 @@ import "fmt"
 import "strings"
 import "errors"
 
-var (
-	errInsertRepeat = errors.New("重复插入")
-	errSQLSyncPanic = errors.New("SQL语句异常")
-	errInsertData   = errors.New("插入数据库异常")
-	errNoUpdateKey  = errors.New("没有更新主键")
-)
-
 // Table 是对CRUD进一层的封装
 type Table struct {
 	*CRUD
@@ -80,7 +73,7 @@ func (t *Table) Create(m map[string]interface{}, checks ...string) (int64, error
 		}
 		// SELECT COUNT(*) FROM `feedback` WHERE `task_id` = ? AND `member_id` = ?
 		if t.Query(fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s", t.tableName, strings.Join(names, "AND")), values...).Int() > 0 {
-			return 0, errInsertRepeat
+			return 0, ErrInsertRepeat
 		}
 	}
 	ks, vs := ksvs(m)
@@ -143,7 +136,7 @@ func (t *Table) Update(m map[string]interface{}, keys ...string) error {
 func (t *Table) CreateOrUpdate(m map[string]interface{}, keys ...string) error {
 	_, err := t.Create(m, keys...)
 	if err != nil {
-		if err == errInsertRepeat {
+		if err == ErrInsertRepeat {
 			return t.Update(m, keys...)
 		}
 		return err

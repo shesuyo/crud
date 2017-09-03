@@ -232,6 +232,68 @@ func (s *search) warpFieldSingel(field string) (warpStr string, tablename string
 
 //结果展示
 
+//RawsMap transfer to query RawsMap
+func (s *search) RawsMap() []map[string]string {
+	query, args := s.Parse()
+	return s.db.Query(query, args...).RawsMap()
+}
+
+//RawsMapInterface transfer to query RawsMapInterface
+func (s *search) RawsMapInterface() []map[string]interface{} {
+	query, args := s.Parse()
+	return s.db.Query(query, args...).RawsMapInterface()
+}
+
+//RawMap transfer to query RawMap
+func (s *search) RawMap() map[string]string {
+	query, args := s.Parse()
+	return s.db.Query(query, args...).RawMap()
+}
+
+//DoubleSlice transfer to query
+func (s *search) DoubleSlice() (map[string]int, [][]string) {
+	query, args := s.Parse()
+	return s.db.Query(query, args...).DoubleSlice()
+}
+
+// //Count count(*)
+// func (s *search) Count() int {
+// 	return api.clone().search.Count()
+// }
+
+// //Struct Struct
+// func (s *search) Struct(v interface{}) {
+// 	api.search.Struct(v)
+// }
+
+//Int 如果指定字段，则返回指定字段的int值，否则返回第一个字段作为int值返回。
+func (s *search) Int(args ...string) int {
+	raw := s.RawMap()
+	if len(args) == 0 {
+		for _, v := range raw {
+			i, _ := strconv.Atoi(v)
+			return i
+		}
+	} else {
+		i, _ := strconv.Atoi(raw[args[0]])
+		return i
+	}
+	return 0
+}
+
+//String like int
+func (s *search) String(args ...string) string {
+	raw := s.RawMap()
+	if len(args) == 0 {
+		for _, v := range raw {
+			return v
+		}
+	} else {
+		return raw[args[0]]
+	}
+	return ""
+}
+
 func (s *search) Struct(v interface{}) {
 	query, args := s.Parse()
 	// s.db.Query(query, args...).Find(v)

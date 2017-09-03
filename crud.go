@@ -8,22 +8,24 @@ import (
 	"net/http"
 	"reflect"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql" //
 )
 
-// 错误
+// 变量
 var (
+	TimeFormat = "2006-01-02 15:04:05" //用于编程经常遇到的时间
+
+	//错误
 	ErrExec = errors.New("执行错误")
 	ErrArgs = errors.New("参数错误")
-)
 
-// 用于编程经常遇到的时间
-var (
-	TimeFormat = "2006-01-02 15:04:05"
+	ErrInsertRepeat = errors.New("重复插入")
+	ErrSQLSyncPanic = errors.New("SQL语句异常")
+	ErrInsertData   = errors.New("插入数据库异常")
+	ErrNoUpdateKey  = errors.New("没有更新主键")
 )
 
 // Render 用于对接http.HandleFunc直接调用CRUD
@@ -31,13 +33,14 @@ type Render func(w http.ResponseWriter, err error, data ...interface{})
 
 // CRUD 本包关键类
 type CRUD struct {
-	debug bool
+	*search
 
+	debug          bool
 	tableColumns   map[string]Columns
 	dataSourceName string
 	db             *sql.DB
-	search         *search
-	render         Render //crud本身不渲染数据，通过其他地方传入一个渲染的函数，然后渲染都是那边处理。
+
+	render Render //crud本身不渲染数据，通过其他地方传入一个渲染的函数，然后渲染都是那边处理。
 }
 
 // NewCRUD 创建一个新的CRUD链接
@@ -131,68 +134,6 @@ func (api *CRUD) Joins(query string, args ...string) *CRUD {
 //Fields fields
 func (api *CRUD) Fields(args ...string) *CRUD {
 	return api.clone().search.Fields(args...).db
-}
-
-//RawsMap transfer to query RawsMap
-func (api *CRUD) RawsMap() []map[string]string {
-	query, args := api.search.Parse()
-	return api.Query(query, args...).RawsMap()
-}
-
-//RawsMapInterface transfer to query RawsMapInterface
-func (api *CRUD) RawsMapInterface() []map[string]interface{} {
-	query, args := api.search.Parse()
-	return api.Query(query, args...).RawsMapInterface()
-}
-
-//RawMap transfer to query RawMap
-func (api *CRUD) RawMap() map[string]string {
-	query, args := api.search.Parse()
-	return api.Query(query, args...).RawMap()
-}
-
-//DoubleSlice transfer to query
-func (api *CRUD) DoubleSlice() (map[string]int, [][]string) {
-	query, args := api.search.Parse()
-	return api.Query(query, args...).DoubleSlice()
-}
-
-//Count count(*)
-func (api *CRUD) Count() int {
-	return api.clone().search.Count()
-}
-
-//Struct Struct
-func (api *CRUD) Struct(v interface{}) {
-	api.search.Struct(v)
-}
-
-//Int 如果指定字段，则返回指定字段的int值，否则返回第一个字段作为int值返回。
-func (api *CRUD) Int(args ...string) int {
-	raw := api.RawMap()
-	if len(args) == 0 {
-		for _, v := range raw {
-			i, _ := strconv.Atoi(v)
-			return i
-		}
-	} else {
-		i, _ := strconv.Atoi(raw[args[0]])
-		return i
-	}
-	return 0
-}
-
-//String like int
-func (api *CRUD) String(args ...string) string {
-	raw := api.RawMap()
-	if len(args) == 0 {
-		for _, v := range raw {
-			return v
-		}
-	} else {
-		return raw[args[0]]
-	}
-	return ""
 }
 
 /*

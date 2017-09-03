@@ -52,6 +52,7 @@ func toDBName(name string) string {
 	}
 	return ""
 }
+
 func ksvs(m map[string]interface{}, keyTail ...string) ([]string, []interface{}) {
 	kt := ""
 	ks := []string{}
@@ -66,6 +67,7 @@ func ksvs(m map[string]interface{}, keyTail ...string) ([]string, []interface{})
 	return ks, vs
 }
 
+//用于返回对应个数参数,多用于In。
 func argslice(l int) string {
 	s := []string{}
 	for i := 0; i < l; i++ {
