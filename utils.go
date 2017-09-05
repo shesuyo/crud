@@ -83,7 +83,9 @@ func structToMap(val interface{}) map[string]interface{} {
 	v := reflect.ValueOf(val)
 	t := reflect.TypeOf(val)
 	for i, num := 0, v.NumField(); i < num; i++ {
-		m[ToDBName(t.Field(i).Name)] = v.Field(i).Interface()
+		if t.Field(i).Tag.Get("crud") != "ignore" {
+			m[ToDBName(t.Field(i).Name)] = v.Field(i).Interface()
+		}
 	}
 	return m
 }

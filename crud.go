@@ -25,6 +25,9 @@ var (
 	ErrSQLSyncPanic = errors.New("SQL语句异常")
 	ErrInsertData   = errors.New("插入数据库异常")
 	ErrNoUpdateKey  = errors.New("没有更新主键")
+
+	ErrMustNeedAddr   = errors.New("必须为值引用")
+	ErrNotSupportType = errors.New("不支持类型")
 )
 
 // Render 用于对接http.HandleFunc直接调用CRUD
@@ -64,9 +67,9 @@ func NewCRUD(dataSourceName string, render ...Render) *CRUD {
 		},
 	}
 
-	for _, tbm := range crud.Query("SHOW TABLES").RawsMap() {
-		for _, v := range tbm {
-			crud.getColums(v)
+	for _, tableMap := range crud.Query("SHOW TABLES").RowsMap() {
+		for _, table := range tableMap {
+			crud.getColumns(table)
 		}
 	}
 	return crud
@@ -150,24 +153,30 @@ func (api *CRUD) haveTablename(tableName string) bool {
 }
 
 // 获取表中所有列名
-func (api *CRUD) getColums(tablename string) Columns {
-	names, ok := api.tableColumns[tablename]
+func (api *CRUD) getColumns(tableName string) Columns {
+	names, ok := api.tableColumns[tableName]
 	if ok {
 		return names
 	}
-	raws := api.Query("SELECT COLUMN_NAME,COLUMN_COMMENT,COLUMN_TYPE,DATA_TYPE FROM information_schema.`COLUMNS` WHERE table_name= ? ", tablename).RawsMap()
+	rows := api.Query("SELECT COLUMN_NAME,COLUMN_COMMENT,COLUMN_TYPE,DATA_TYPE,IS_NULLABLE FROM information_schema.`COLUMNS` WHERE table_name= ? ", tableName).RowsMap()
 	cols := make(map[string]Column)
-	for _, v := range raws {
-		cols[v["COLUMN_NAME"]] = Column{Name: v["COLUMN_NAME"], Comment: v["COLUMN_COMMENT"], ColumnType: v["COLUMN_TYPE"], DataType: v["DATA_TYPE"]}
+	for _, v := range rows {
+		cols[v["COLUMN_NAME"]] = Column{
+			Name:       v["COLUMN_NAME"],
+			Comment:    v["COLUMN_COMMENT"],
+			ColumnType: v["COLUMN_TYPE"],
+			DataType:   v["DATA_TYPE"],
+			IsNullAble: v["IS_NULLABLE"] == "YES",
+		}
 		DBColums[v["COLUMN_NAME"]] = cols[v["COLUMN_NAME"]]
 	}
-	api.tableColumns[tablename] = cols
+	api.tableColumns[tableName] = cols
 	return cols
 }
 
 // Table 返回一个Table
-func (api *CRUD) Table(tablename string) *Table {
-	return &Table{CRUD: api.clone().search.TableName(tablename).db, tableName: tablename}
+func (api *CRUD) Table(tableName string) *Table {
+	return &Table{CRUD: api.clone().search.TableName(tableName).db, tableName: tableName}
 }
 
 /*
@@ -192,7 +201,7 @@ func (api *CRUD) Log(args ...interface{}) {
 	}
 }
 
-//Parse ceshi
+//Parse 将条件结构转换成sql和参数
 func (api *CRUD) Parse() (string, []interface{}) {
 	return api.search.Parse()
 }
@@ -236,9 +245,7 @@ func (api *CRUD) Query(sql string, args ...interface{}) *SQLRows {
 	db := api.DB()
 	api.LogSQL(sql, args...)
 	rows, err := db.Query(sql, args...)
-	/*
-		dial tcp 192.168.2.14:3306: connectex: Only one usage of each socket address (protocol/network address/port) is normally permitted.
-	*/
+
 	if err != nil {
 		api.stack(err, sql, args...)
 	}
@@ -261,6 +268,30 @@ func (api *CRUD) DB() *sql.DB {
 	return api.db
 }
 
+//Create 根据相应单个结构体进行创建
+func (api *CRUD) Create(v interface{}) (int64, error) {
+	tableName := getStructDBName(v)
+	m := structToMap(v)
+	return api.Table(tableName).Create(m)
+
+	//一定要是地址
+	//需要检查Before函数
+	//需要按需转换成map(考虑ignore)
+	//需要检查After函数
+}
+
+// //Creates 根据相应多个结构体进行创建
+// func (api *CRUD) Creates(v interface{}) ([]int, error) {}
+
+// //Read
+// func (api *CRUD) Read(v interface{}) error {}
+
+// func (api *CRUD) Reads(v interface{}) error          {}
+// func (api *CRUD) Update(v interface{}) (int, error)  {}
+// func (api *CRUD) Updates(v interface{}) (int, error) {}
+// func (api *CRUD) Delete(v interface{}) (int, error)  {}
+// func (api *CRUD) Deletes(v interface{}) (int, error)  {}
+
 // FormCreate 创建，表单创建。
 func (api *CRUD) FormCreate(v interface{}, w http.ResponseWriter, r *http.Request) {
 	tableName := getStructDBName(v)
@@ -269,6 +300,15 @@ func (api *CRUD) FormCreate(v interface{}, w http.ResponseWriter, r *http.Reques
 		api.argsErrorRender(w)
 		return
 	}
+	id, err := api.Table(tableName).Create(m)
+	if err != nil {
+		api.execErrorRender(w)
+		return
+	}
+	m["id"] = id
+	delete(m, "is_deleted")
+	api.dataRender(w, m)
+
 	// names := []string{}
 	// values := []string{}
 	// args := []interface{}{}
@@ -283,15 +323,6 @@ func (api *CRUD) FormCreate(v interface{}, w http.ResponseWriter, r *http.Reques
 	// if cols.HaveColumn("updated_at") {
 	// 	m["updated_at"] = time.Now().Format(TimeFormat)
 	// }
-
-	id, err := api.Table(tableName).Create(m)
-	if err != nil {
-		api.execErrorRender(w)
-		return
-	}
-	m["id"] = id
-	//delete(m, "is_deleted")
-	api.dataRender(w, m)
 
 	// for k, v := range m {
 	// 	names = append(names, "`"+k+"`")
@@ -317,10 +348,11 @@ func (api *CRUD) FormRead(v interface{}, w http.ResponseWriter, r *http.Request)
 	//	处理翻页的问题
 	//	首先判断这个里面有没有这个字段
 	m := parseRequest(v, r, R)
-	//	看一下是不是其他表关联查找
+
 	tableName := getStructDBName(v)
 	data := api.Table(tableName).Reads(m)
 	api.dataRender(w, data)
+	//	看一下是不是其他表关联查找
 	// cols := api.getColums(tableName)
 	// ctn := "" //combine table name
 	// for k := range m {
@@ -425,18 +457,17 @@ func (api *CRUD) FormDelete(v interface{}, w http.ResponseWriter, r *http.Reques
 }
 
 // Find 将查找数据放到结构体里面
-func (api *CRUD) Find(v interface{}, args ...interface{}) {
+func (api *CRUD) Find(v interface{}, args ...interface{}) error {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Ptr {
-		fmt.Println("Must Need Addr")
-		return
+		return ErrMustNeedAddr
 	}
 
 	if len(args) > 0 {
 		if sql, ok := args[0].(string); ok {
 			if strings.Contains(args[0].(string), "SELECT") {
 				api.Query(sql, args[1:]...).Find(v)
-				return
+				return nil
 			}
 		}
 	}
@@ -464,6 +495,7 @@ func (api *CRUD) Find(v interface{}, args ...interface{}) {
 	}
 
 	api.Query(fmt.Sprintf("SELECT * FROM `%s` %s", tableName, where), args[1:]...).Find(v)
+	return nil
 }
 
 // connection 找出两张表之间的关联
@@ -527,7 +559,7 @@ func (api *CRUD) connection(target string, got reflect.Value) ([]interface{}, bo
 }
 
 // FindAll 在需要的时候将自动查询结构体子结构体
-func (api *CRUD) FindAll(v interface{}, args ...interface{}) {
+func (api *CRUD) FindAll(v interface{}, args ...interface{}) error {
 	api.Find(v, args...)
 	//首先查找字段，然后再查找结构体和Slice
 	/*
@@ -544,8 +576,9 @@ func (api *CRUD) FindAll(v interface{}, args ...interface{}) {
 			api.setStructField(rv.Index(i))
 		}
 	default:
-		fmt.Println("unsupport type")
+		return ErrNotSupportType
 	}
+	return nil
 }
 
 func (api *CRUD) setStructField(rv reflect.Value) {

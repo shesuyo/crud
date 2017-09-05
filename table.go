@@ -18,7 +18,7 @@ func (t *Table) Name() string {
 
 // All 返回这张表所有数据
 func (t *Table) All() []map[string]string {
-	return t.Query("SELECT * FROM " + t.tableName).RawsMap()
+	return t.Query("SELECT * FROM " + t.tableName).RowsMap()
 }
 
 // Count 返回表有多少条数据
@@ -91,7 +91,7 @@ func (t *Table) Create(m map[string]interface{}, checks ...string) (int64, error
 func (t *Table) Reads(m map[string]interface{}) []map[string]string {
 	//SELECT * FROM address WHERE id = 1 AND uid = 27
 	ks, vs := ksvs(m, " = ? ")
-	return t.Query(fmt.Sprintf("SELECT * FROM %s WHERE %s", t.tableName, strings.Join(ks, "AND")), vs...).RawsMap()
+	return t.Query(fmt.Sprintf("SELECT * FROM %s WHERE %s", t.tableName, strings.Join(ks, "AND")), vs...).RowsMap()
 }
 
 func (t *Table) Read(m map[string]interface{}) map[string]string {

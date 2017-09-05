@@ -14,8 +14,9 @@ func (cs Columns) HaveColumn(columnName string) bool {
 
 // Column 是描述一个具体的列
 type Column struct {
-	Name       string
-	Comment    string
-	ColumnType string
-	DataType   string
+	Name       string //列名
+	Comment    string //评论
+	ColumnType string //列类型 tinyint(3) unsigned
+	DataType   string //数据类型 tinyint
+	IsNullAble bool //是否可为NULL
 }

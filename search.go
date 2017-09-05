@@ -232,25 +232,18 @@ func (s *search) warpFieldSingel(field string) (warpStr string, tablename string
 
 //结果展示
 
-//RawsMap transfer to query RawsMap
-func (s *search) RawsMap() RowsMap {
+func (s *search) RowMap() RowMap {
 	query, args := s.Parse()
-	return s.db.Query(query, args...).RawsMap()
+	return s.db.Query(query, args...).RowMap()
 }
-
-//RawsMapInterface transfer to query RawsMapInterface
-func (s *search) RawsMapInterface() []map[string]interface{} {
+func (s *search) RowsMap() RowsMap {
 	query, args := s.Parse()
-	return s.db.Query(query, args...).RawsMapInterface()
+	return s.db.Query(query, args...).RowsMap()
 }
-
-//RawMap transfer to query RawMap
-func (s *search) RawMap() map[string]string {
+func (s *search) RowsMapInterface() RowsMapInterface {
 	query, args := s.Parse()
-	return s.db.Query(query, args...).RawMap()
+	return s.db.Query(query, args...).RowsMapInterface()
 }
-
-//DoubleSlice transfer to query
 func (s *search) DoubleSlice() (map[string]int, [][]string) {
 	query, args := s.Parse()
 	return s.db.Query(query, args...).DoubleSlice()
@@ -258,14 +251,14 @@ func (s *search) DoubleSlice() (map[string]int, [][]string) {
 
 //Int 如果指定字段，则返回指定字段的int值，否则返回第一个字段作为int值返回。
 func (s *search) Int(args ...string) int {
-	raw := s.RawMap()
+	row := s.RowMap()
 	if len(args) == 0 {
-		for _, v := range raw {
+		for _, v := range row {
 			i, _ := strconv.Atoi(v)
 			return i
 		}
 	} else {
-		i, _ := strconv.Atoi(raw[args[0]])
+		i, _ := strconv.Atoi(row[args[0]])
 		return i
 	}
 	return 0
@@ -273,13 +266,13 @@ func (s *search) Int(args ...string) int {
 
 //String like int
 func (s *search) String(args ...string) string {
-	raw := s.RawMap()
+	row := s.RowMap()
 	if len(args) == 0 {
-		for _, v := range raw {
+		for _, v := range row {
 			return v
 		}
 	} else {
-		return raw[args[0]]
+		return row[args[0]]
 	}
 	return ""
 }

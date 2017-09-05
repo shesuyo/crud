@@ -27,7 +27,7 @@ func (r *SQLRows) Pluge(cn string) []interface{} {
 		return []interface{}{}
 	}
 	out := []interface{}{}
-	rs := r.RawsMapInterface()
+	rs := r.RowsMapInterface()
 	for _, v := range rs {
 		out = append(out, v[cn])
 	}
@@ -40,7 +40,7 @@ func (r *SQLRows) PlugeInt(cn string) []int {
 		return []int{}
 	}
 	out := []int{}
-	rs := r.RawsMapInterface()
+	rs := r.RowsMapInterface()
 	for _, v := range rs {
 		i, ok := v[cn].(int)
 		if ok {
@@ -58,7 +58,7 @@ func (r *SQLRows) PlugeStinrg(cn string) []string {
 		return []string{}
 	}
 	out := []string{}
-	rs := r.RawsMapInterface()
+	rs := r.RowsMapInterface()
 	for _, v := range rs {
 		i, ok := v[cn].(string)
 		if ok {
@@ -70,21 +70,21 @@ func (r *SQLRows) PlugeStinrg(cn string) []string {
 	return out
 }
 
-// RawMapInterface 返回map[string]interface{} 只有一列
-func (r *SQLRows) RawMapInterface() map[string]interface{} {
-	raws := r.RawsMapInterface()
+// RowMapInterface 返回map[string]interface{} 只有一列
+func (r *SQLRows) RowMapInterface() RowMapInterface {
+	raws := r.RowsMapInterface()
 	if len(raws) >= 1 {
 		return raws[0]
 	}
 	return make(map[string]interface{}, 0)
 }
 
-// RawsMapInterface 返回[]map[string]interface{}，每个数组对应一列。
+// RowsMapInterface 返回[]map[string]interface{}，每个数组对应一列。
 /*
 	如果是无符号的tinyint能存0-255
 	这里有浪费tinyint->int8[-128,127] unsigned tinyint uint8[0,255]，这里直接用int16[-32768,32767]
 */
-func (r *SQLRows) RawsMapInterface() []map[string]interface{} {
+func (r *SQLRows) RowsMapInterface() RowsMapInterface {
 	rs := []map[string]interface{}{}
 	if r.err != nil {
 		return rs
@@ -140,8 +140,16 @@ func (r *SQLRows) RawsMapInterface() []map[string]interface{} {
 	return rs
 }
 
-//RowsMap 多行
-type RowsMap []map[string]string
+type (
+	//RowsMap 多行
+	RowsMap []map[string]string
+	//RowMap 单行
+	RowMap map[string]string
+	//RowsMapInterface 多行
+	RowsMapInterface []map[string]interface{}
+	//RowMapInterface 单行
+	RowMapInterface map[string]interface{}
+)
 
 //Pluck 取出中间的一列
 func (rm RowsMap) Pluck(key string) []string {
@@ -150,11 +158,6 @@ func (rm RowsMap) Pluck(key string) []string {
 		vs = append(vs, v[key])
 	}
 	return vs
-}
-
-//RawsMap alias RowsMap
-func (r *SQLRows) RawsMap() RowsMap {
-	return r.RowsMap()
 }
 
 // RowsMap []map[string]string 所有类型都将返回字符串类型
@@ -172,6 +175,7 @@ func (r *SQLRows) RowsMap() RowsMap {
 	cols, _ := r.rows.Columns()
 
 	for r.rows.Next() {
+		//type RawBytes []byte
 		rowMap := make(map[string]string)
 		containers := make([]interface{}, 0, len(cols))
 		for i := 0; i < cap(containers); i++ {
@@ -187,9 +191,9 @@ func (r *SQLRows) RowsMap() RowsMap {
 	return rs
 }
 
-//RawMap RawMap
-func (r *SQLRows) RawMap() map[string]string {
-	out := r.RawsMap()
+//RowMap RowMap
+func (r *SQLRows) RowMap() RowMap {
+	out := r.RowsMap()
 	if len(out) > 0 {
 		return out[0]
 	}
@@ -254,8 +258,8 @@ func (r *SQLRows) String() string {
 }
 
 // Find 将结果查找后放到结构体中
-func (r *SQLRows) Find(v interface{}) {
-	m := r.RawsMapInterface()
+func (r *SQLRows) Find(v interface{}) error {
+	m := r.RowsMapInterface()
 	rv := reflect.ValueOf(v).Elem()
 	//如果查询是数组的话
 	if rv.Kind() == reflect.Slice {
@@ -303,7 +307,7 @@ func (r *SQLRows) Find(v interface{}) {
 			}
 		}
 	}
-
+	return  nil
 }
 
 func (r *SQLRows) setValue(v reflect.Value, i interface{}) {
@@ -325,7 +329,7 @@ func (r *SQLRows) Scan(v interface{}) error {
 	return nil
 }
 
-func queryRows(rows *sql.Rows) []map[string]string {
+func queryRows(rows *sql.Rows) RowsMap {
 	var result = make([]map[string]string, 0)
 	for rows.Next() {
 		result = append(result, scanRows(rows))
@@ -333,7 +337,7 @@ func queryRows(rows *sql.Rows) []map[string]string {
 	return result
 }
 
-func scanRows(rows *sql.Rows) map[string]string {
+func scanRows(rows *sql.Rows) RowMap {
 	var result = make(map[string]string)
 
 	cols, _ := rows.Columns()
