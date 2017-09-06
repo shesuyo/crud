@@ -77,15 +77,27 @@ func argslice(l int) string {
 	return strings.Join(s, ",")
 }
 
+const (
+	//DBName DBName
+	DBName = "DBName"
+)
+
 //structToMap 将结构体转换成map[string]interface{}
-func structToMap(val interface{}) map[string]interface{} {
+func structToMap(v reflect.Value) map[string]interface{} {
+	v = reflect.Indirect(v)
+	t := v.Type()
 	m := map[string]interface{}{}
-	v := reflect.ValueOf(val)
-	t := reflect.TypeOf(val)
+
 	for i, num := 0, v.NumField(); i < num; i++ {
-		if t.Field(i).Tag.Get("crud") != "ignore" {
-			m[ToDBName(t.Field(i).Name)] = v.Field(i).Interface()
+		tag := t.Field(i).Tag
+		if tag.Get("crud") != "ignore" {
+			if tag.Get("cname") != "" {
+				m[tag.Get("cname")] = v.Field(i).Interface()
+			} else {
+				m[ToDBName(t.Field(i).Name)] = v.Field(i).Interface()
+			}
 		}
 	}
+
 	return m
 }

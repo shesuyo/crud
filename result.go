@@ -21,6 +21,28 @@ type SQLRows struct {
 	err  error
 }
 
+//为了兼容以前的代码这里设置四个转发的函数，以后肯定会慢慢移除掉的。
+
+//RawMapInterface RowMapInterface
+func (r *SQLRows) RawMapInterface() RowMapInterface {
+	return r.RowMapInterface()
+}
+
+//RawsMapInterface RowsMapInterface
+func (r *SQLRows) RawsMapInterface() RowsMapInterface {
+	return r.RowsMapInterface()
+}
+
+//RawsMap RowsMap
+func (r *SQLRows) RawsMap() RowsMap {
+	return r.RowsMap()
+}
+
+//RawMap RowMap
+func (r *SQLRows) RawMap() RowMap {
+	return r.RowMap()
+}
+
 // Pluge  获取某一列的interface类型
 func (r *SQLRows) Pluge(cn string) []interface{} {
 	if r.err != nil {
@@ -307,7 +329,7 @@ func (r *SQLRows) Find(v interface{}) error {
 			}
 		}
 	}
-	return  nil
+	return nil
 }
 
 func (r *SQLRows) setValue(v reflect.Value, i interface{}) {

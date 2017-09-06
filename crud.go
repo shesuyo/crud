@@ -27,6 +27,8 @@ var (
 	ErrNoUpdateKey  = errors.New("没有更新主键")
 
 	ErrMustNeedAddr   = errors.New("必须为值引用")
+	ErrMustNeedSlice  = errors.New("必须为Slice")
+	ErrMustNeedID     = errors.New("必须要有ID")
 	ErrNotSupportType = errors.New("不支持类型")
 )
 
@@ -269,32 +271,152 @@ func (api *CRUD) DB() *sql.DB {
 }
 
 //Create 根据相应单个结构体进行创建
-func (api *CRUD) Create(v interface{}) (int64, error) {
-	tableName := getStructDBName(v)
-	m := structToMap(v)
-	return api.Table(tableName).Create(m)
-
+func (api *CRUD) Create(obj interface{}) (int64, error) {
 	//一定要是地址
 	//需要检查Before函数
 	//需要按需转换成map(考虑ignore)
 	//需要检查After函数
+	//TODO 一次性创建整个嵌套结构体
+	v := reflect.ValueOf(obj)
+	if v.Kind() != reflect.Ptr {
+		return 0, ErrMustNeedAddr
+	}
+	beforeFunc := v.MethodByName("BeforeCreate")
+	afterFunc := v.MethodByName("AfterCreate")
+	tableName := getStructDBName(v)
+
+	if beforeFunc.IsValid() {
+		beforeFunc.Call(nil)
+	}
+	m := structToMap(v)
+	id, err := api.Table(tableName).Create(m)
+
+	rID := v.Elem().FieldByName("ID")
+	if rID.IsValid() {
+		rID.SetInt(id)
+	}
+
+	if afterFunc.IsValid() {
+		afterFunc.Call(nil)
+	}
+	return id, err
 }
 
-// //Creates 根据相应多个结构体进行创建
-// func (api *CRUD) Creates(v interface{}) ([]int, error) {}
+//Creates 根据相应多个结构体进行创建
+func (api *CRUD) Creates(objs interface{}) ([]int64, error) {
+	ids := []int64{}
+	v := reflect.ValueOf(objs)
+	if v.Kind() != reflect.Ptr {
+		return ids, ErrMustNeedAddr
+	}
+	if v.Elem().Kind() != reflect.Slice {
+		return ids, ErrMustNeedSlice
+	}
 
-// //Read
-// func (api *CRUD) Read(v interface{}) error {}
+	for i, num := 0, v.Elem().Len(); i < num; i++ {
+		id, err := api.Create(v.Elem().Index(i).Addr().Interface())
+		if err != nil {
+			return ids, err
+		}
 
-// func (api *CRUD) Reads(v interface{}) error          {}
-// func (api *CRUD) Update(v interface{}) (int, error)  {}
-// func (api *CRUD) Updates(v interface{}) (int, error) {}
-// func (api *CRUD) Delete(v interface{}) (int, error)  {}
-// func (api *CRUD) Deletes(v interface{}) (int, error)  {}
+		ids = append(ids, id)
+	}
+
+	return ids, nil
+}
+
+//Update Update
+func (api *CRUD) Update(obj interface{}) error {
+	//根据ID进行Update
+	v := reflect.ValueOf(obj)
+	if v.Kind() != reflect.Ptr {
+		return ErrMustNeedAddr
+	}
+	beforeFunc := v.MethodByName("BeforeUpdate")
+	afterFunc := v.MethodByName("AfterUpdate")
+	if beforeFunc.IsValid() {
+		beforeFunc.Call(nil)
+	}
+	tableName := getStructDBName(v)
+	m := structToMap(v)
+	err := api.Table(tableName).Update(m)
+
+	if err != nil {
+		return err
+	}
+	if afterFunc.IsValid() {
+		afterFunc.Call(nil)
+	}
+	return nil
+}
+
+//Updates Updates
+func (api *CRUD) Updates(objs interface{}) error {
+	v := reflect.ValueOf(objs)
+	if v.Kind() != reflect.Ptr {
+		return ErrMustNeedAddr
+	}
+	if v.Elem().Kind() != reflect.Slice {
+		return ErrMustNeedSlice
+	}
+
+	for i, num := 0, v.Elem().Len(); i < num; i++ {
+		err := api.Update(v.Elem().Index(i).Addr().Interface())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+//Delete Delete
+func (api *CRUD) Delete(obj interface{}) (int64, error) {
+	v := reflect.ValueOf(obj)
+	if v.Kind() != reflect.Ptr {
+		return 0, ErrMustNeedAddr
+	}
+	beforeFunc := v.MethodByName("BeforeDelete")
+	afterFunc := v.MethodByName("AfterDelete")
+	if beforeFunc.IsValid() {
+		beforeFunc.Call(nil)
+	}
+	id := getStructID(v)
+	if id == 0 {
+		return 0, ErrMustNeedID
+	}
+	tableName := getStructDBName(v)
+
+	count, err := api.Table(tableName).Delete(map[string]interface{}{"id": id})
+	if afterFunc.IsValid() {
+		afterFunc.Call(nil)
+	}
+	return count, err
+}
+
+//Deletes Deletes
+func (api *CRUD) Deletes(objs interface{}) (int64, error) {
+	var affCount int64
+	v := reflect.ValueOf(objs)
+	if v.Kind() != reflect.Ptr {
+		return 0, ErrMustNeedAddr
+	}
+	if v.Elem().Kind() != reflect.Slice {
+		return 0, ErrMustNeedSlice
+	}
+
+	for i, num := 0, v.Elem().Len(); i < num; i++ {
+		aff, err := api.Delete(v.Elem().Index(i).Addr().Interface())
+		affCount += aff
+		if err != nil {
+			return affCount, err
+		}
+	}
+	return 0, nil
+}
 
 // FormCreate 创建，表单创建。
 func (api *CRUD) FormCreate(v interface{}, w http.ResponseWriter, r *http.Request) {
-	tableName := getStructDBName(v)
+	tableName := getStructDBName(reflect.ValueOf(v))
 	m := parseRequest(v, r, C)
 	if m == nil || len(m) == 0 {
 		api.argsErrorRender(w)
@@ -349,7 +471,7 @@ func (api *CRUD) FormRead(v interface{}, w http.ResponseWriter, r *http.Request)
 	//	首先判断这个里面有没有这个字段
 	m := parseRequest(v, r, R)
 
-	tableName := getStructDBName(v)
+	tableName := getStructDBName(reflect.ValueOf(v))
 	data := api.Table(tableName).Reads(m)
 	api.dataRender(w, data)
 	//	看一下是不是其他表关联查找
@@ -399,7 +521,7 @@ func (api *CRUD) FormRead(v interface{}, w http.ResponseWriter, r *http.Request)
 
 // FormUpdate 表单更新
 func (api *CRUD) FormUpdate(v interface{}, w http.ResponseWriter, r *http.Request) {
-	tableName := getStructDBName(v)
+	tableName := getStructDBName(reflect.ValueOf(v))
 	m := parseRequest(v, r, R)
 	if m == nil || len(m) == 0 {
 		api.argsErrorRender(w)
@@ -430,7 +552,7 @@ func (api *CRUD) FormUpdate(v interface{}, w http.ResponseWriter, r *http.Reques
 
 // FormDelete 表单删除
 func (api *CRUD) FormDelete(v interface{}, w http.ResponseWriter, r *http.Request) {
-	tableName := getStructDBName(v)
+	tableName := getStructDBName(reflect.ValueOf(v))
 	m := parseRequest(v, r, R)
 	if m == nil || len(m) == 0 {
 		api.argsErrorRender(w)
@@ -457,44 +579,88 @@ func (api *CRUD) FormDelete(v interface{}, w http.ResponseWriter, r *http.Reques
 }
 
 // Find 将查找数据放到结构体里面
-func (api *CRUD) Find(v interface{}, args ...interface{}) error {
-	rv := reflect.ValueOf(v)
-	if rv.Kind() != reflect.Ptr {
+// 如果不传条件则是查找所有人
+// Read Find Select
+func (api *CRUD) Find(obj interface{}, args ...interface{}) error {
+	var (
+		v = reflect.ValueOf(obj)
+
+		tableName = ""
+		elem      = v.Elem()
+		where     = " WHERE 1 "
+
+		rawSqlflag = false
+	)
+
+	if v.Kind() != reflect.Ptr {
 		return ErrMustNeedAddr
 	}
 
 	if len(args) > 0 {
 		if sql, ok := args[0].(string); ok {
-			if strings.Contains(args[0].(string), "SELECT") {
-				api.Query(sql, args[1:]...).Find(v)
-				return nil
+			if strings.Contains(sql, "SELECT") {
+				rawSqlflag = true
+				err := api.Query(sql, args[1:]...).Find(obj)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
 
-	tableName := ""
-	if rv.Elem().Kind() == reflect.Slice {
-		tableName = ToDBName(rv.Elem().Type().Elem().Name())
-	} else {
-		tableName = ToDBName(rv.Type().Elem().Name())
+	if !rawSqlflag {
+		if elem.Kind() == reflect.Slice {
+			tableName = getStructDBName(reflect.New(elem.Type().Elem()))
+		} else {
+			tableName = getStructDBName(elem)
+		}
+
+		if len(args) == 1 {
+			where += " AND id = ? "
+			args = append(args, args[0])
+		} else if len(args) > 1 {
+			where += "AND " + args[0].(string)
+		} else {
+			//avoid args[1:]... bounds out of range
+			args = append(args, nil)
+
+			//如果没有传参数，那么参数就在结构体本身。（只支持ID,而且是结构体的时候）
+			if elem.Kind() == reflect.Struct {
+				rID := elem.FieldByName("ID")
+				if rID.IsValid() {
+					rIDInt64 := rID.Int()
+					if rIDInt64 != 0 {
+						where += " AND id = ? "
+						args = append(args, rIDInt64)
+					}
+				}
+			}
+		}
+
+		if api.tableColumns[tableName].HaveColumn("is_deleted") {
+			where += " AND is_deleted = 0"
+		}
+
+		err := api.Query(fmt.Sprintf("SELECT * FROM `%s` %s", tableName, where), args[1:]...).Find(obj)
+		if err != nil {
+			return err
+		}
 	}
 
-	where := " WHERE 1 "
-
-	if len(args) == 1 {
-		where += " AND id = ? "
-		args = append(args, args[0])
-	} else if len(args) > 1 {
-		where += args[0].(string)
-	} else {
-		//avoid args[1:]... bounds out of range
-		args = append(args, nil)
+	switch elem.Kind() {
+	case reflect.Slice:
+		for i, num := 0, elem.Len(); i < num; i++ {
+			afterFunc := elem.Index(i).Addr().MethodByName("AfterSelect")
+			if !afterFunc.IsValid() {
+				return nil
+			}
+			afterFunc.Call(nil)
+		}
+	case reflect.Struct:
+		afterFunc := v.MethodByName("AfterSelect")
+		afterFunc.Call(nil)
 	}
-	if api.tableColumns[tableName].HaveColumn("is_deleted") {
-		where += " AND is_deleted = 0"
-	}
 
-	api.Query(fmt.Sprintf("SELECT * FROM `%s` %s", tableName, where), args[1:]...).Find(v)
 	return nil
 }
 
