@@ -232,6 +232,16 @@ func (s *search) warpFieldSingel(field string) (warpStr string, tablename string
 
 //结果展示
 
+func (s *search) RawMap() RowMap {
+	return s.RowMap()
+}
+func (s *search) RawsMap() RowsMap {
+	return s.RowsMap()
+}
+func (s *search) RawsMapInterface() RowsMapInterface {
+	return s.RowsMapInterface()
+}
+
 func (s *search) RowMap() RowMap {
 	query, args := s.Parse()
 	return s.db.Query(query, args...).RowMap()
