@@ -650,14 +650,14 @@ func (api *CRUD) Find(obj interface{}, args ...interface{}) error {
 	switch elem.Kind() {
 	case reflect.Slice:
 		for i, num := 0, elem.Len(); i < num; i++ {
-			afterFunc := elem.Index(i).Addr().MethodByName("AfterSelect")
+			afterFunc := elem.Index(i).Addr().MethodByName("AfterFind")
 			if !afterFunc.IsValid() {
 				return nil
 			}
 			afterFunc.Call(nil)
 		}
 	case reflect.Struct:
-		afterFunc := v.MethodByName("AfterSelect")
+		afterFunc := v.MethodByName("AfterFind")
 		afterFunc.Call(nil)
 	}
 
