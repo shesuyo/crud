@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	fullTitles         = []string{"API", "ASCII", "CPU", "CSS", "DNS", "EOF", "GUID", "HTML", "HTTP", "HTTPS", "ID", "IP", "JSON", "LHS", "QPS", "RAM", "RHS", "RPC", "SLA", "SMTP", "SSH", "TLS", "TTL", "UI", "UID", "UUID", "URI", "URL", "UTF8", "VM", "XML", "XSRF", "XSS", "PY"}
+	fullTitles         = []string{"API", "CPU", "CSS", "DNS", "EOF", "GUID", "HTML", "HTTP", "HTTPS", "ID", "UID", "IP", "JSON", "QPS", "RAM", "RHS", "RPC", "SLA", "SMTP", "SSH", "TLS", "TTL", "UI", "UID", "UUID", "URI", "URL", "UTF8", "VM", "XML", "XSRF", "XSS", "PY"}
 	fullTitlesReplacer *strings.Replacer
 	//m和rm公用同一个
 	dbNameMap = safemap.NewMapStringString()
@@ -77,9 +77,11 @@ func argslice(l int) string {
 	return strings.Join(s, ",")
 }
 
+//会用到的函数
 const (
-	//DBName DBName
-	DBName = "DBName"
+	DBName       = "DBName"
+	BeforeCreate = "BeforeCreate"
+	AfterCreate  = "AfterCreate"
 )
 
 //structToMap 将结构体转换成map[string]interface{}
@@ -90,7 +92,7 @@ func structToMap(v reflect.Value) map[string]interface{} {
 
 	for i, num := 0, v.NumField(); i < num; i++ {
 		tag := t.Field(i).Tag
-		if tag.Get("crud") != "ignore" {
+		if tag.Get("crud") != "ignore" && tag.Get("crud") != "-" {
 			if tag.Get("cname") != "" {
 				m[tag.Get("cname")] = v.Field(i).Interface()
 			} else {

@@ -285,8 +285,16 @@ func (api *CRUD) Create(obj interface{}) (int64, error) {
 	afterFunc := v.MethodByName("AfterCreate")
 	tableName := getStructDBName(v)
 
+	// 这里的处理应该是有才处理，没有不管。
 	if beforeFunc.IsValid() {
-		beforeFunc.Call(nil)
+		vals := beforeFunc.Call(nil)
+		if len(vals) == 1 {
+			if err, ok := vals[0].Interface().(error); ok {
+				if err != nil {
+					return 0, err
+				}
+			}
+		}
 	}
 	m := structToMap(v)
 	id, err := api.Table(tableName).Create(m)
