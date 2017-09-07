@@ -288,7 +288,14 @@ func (r *SQLRows) Find(v interface{}) error {
 		for idx := range m {
 			ele := reflect.New(rv.Type().Elem())
 			for i := 0; i < ele.Elem().NumField(); i++ {
-				dbn := ToDBName(ele.Elem().Type().Field(i).Name)
+				var dbn string
+				var field = reflect.TypeOf(v).Elem().Field(i)
+				var tagName = field.Tag.Get("dname")
+				if tagName != "" {
+					dbn = tagName
+				} else {
+					dbn = ToDBName(field.Name)
+				}
 				dbv, ok := m[idx][dbn]
 				if ok && dbv != nil {
 					r.setValue(ele.Elem().Field(i), dbv)
@@ -306,7 +313,14 @@ func (r *SQLRows) Find(v interface{}) error {
 			case reflect.Struct:
 				elem := reflect.ValueOf(v).Elem()
 				for i := 0; i < elem.NumField(); i++ {
-					dbn := ToDBName(reflect.TypeOf(v).Elem().Field(i).Name)
+					var dbn string
+					var field = reflect.TypeOf(v).Elem().Field(i)
+					var tagName = field.Tag.Get("dname")
+					if tagName != "" {
+						dbn = tagName
+					} else {
+						dbn = ToDBName(field.Name)
+					}
 					dbv, ok := m[0][dbn]
 					if ok && dbv != nil {
 						r.setValue(elem.Field(i), dbv)
