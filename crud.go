@@ -37,7 +37,7 @@ type Render func(w http.ResponseWriter, err error, data ...interface{})
 
 // CRUD 本包关键类
 type CRUD struct {
-	*search
+	*Search
 
 	debug          bool
 	tableColumns   map[string]Columns
@@ -77,23 +77,23 @@ func NewCRUD(dataSourceName string, render ...Render) *CRUD {
 	return crud
 }
 
-func (api *CRUD) clone() *CRUD {
-	c := CRUD{
-		debug: api.debug,
+// func (api *CRUD) clone() *CRUD {
+// 	c := CRUD{
+// 		debug: api.debug,
 
-		tableColumns:   api.tableColumns,
-		dataSourceName: api.dataSourceName,
-		db:             api.db,
-		render:         api.render,
-	}
-	if api.search == nil {
-		c.search = &search{}
-	} else {
-		c.search = api.search.clone()
-	}
-	c.search.db = &c
-	return &c
-}
+// 		tableColumns:   api.tableColumns,
+// 		dataSourceName: api.dataSourceName,
+// 		db:             api.db,
+// 		render:         api.render,
+// 	}
+// 	if api.Search == nil {
+// 		c.Search = &Search{}
+// 	} else {
+// 		c.Search = api.Search.Clone()
+// 	}
+// 	c.Search.db = &c
+// 	return &c
+// }
 
 /*
 	CRUD table
@@ -114,30 +114,6 @@ func (api *CRUD) execErrorRender(w http.ResponseWriter) {
 
 func (api *CRUD) dataRender(w http.ResponseWriter, data interface{}) {
 	api.render(w, nil, data)
-}
-
-/*
-	CRUD search
-*/
-
-//Where where
-func (api *CRUD) Where(query interface{}, args ...interface{}) *CRUD {
-	return api.clone().search.Where(fmt.Sprintf("%v", query), args...).db
-}
-
-//In In
-func (api *CRUD) In(field string, args ...interface{}) *CRUD {
-	return api.clone().search.In(field, args...).db
-}
-
-//Joins joins
-func (api *CRUD) Joins(query string, args ...string) *CRUD {
-	return api.clone().search.Joins(query, args...).db
-}
-
-//Fields fields
-func (api *CRUD) Fields(args ...string) *CRUD {
-	return api.clone().search.Fields(args...).db
 }
 
 /*
@@ -178,7 +154,7 @@ func (api *CRUD) getColumns(tableName string) Columns {
 
 // Table 返回一个Table
 func (api *CRUD) Table(tableName string) *Table {
-	return &Table{CRUD: api.clone().search.TableName(tableName).db, tableName: tableName}
+	return &Table{CRUD: api, tableName: tableName}
 }
 
 /*
@@ -201,11 +177,6 @@ func (api *CRUD) Log(args ...interface{}) {
 	if api.debug {
 		api.log(args...)
 	}
-}
-
-//Parse 将条件结构转换成sql和参数
-func (api *CRUD) Parse() (string, []interface{}) {
-	return api.search.Parse()
 }
 
 // LogSQL 会将sql语句中的?替换成相应的参数，让DEBUG的时候可以直接复制SQL语句去使用。

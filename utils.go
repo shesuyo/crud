@@ -103,3 +103,11 @@ func structToMap(v reflect.Value) map[string]interface{} {
 
 	return m
 }
+
+func placeholder(n int) string {
+	holder := []string{}
+	for i := 0; i < n; i++ {
+		holder = append(holder, "?")
+	}
+	return strings.Join(holder, ",")
+}

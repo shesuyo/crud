@@ -6,33 +6,38 @@ import (
 	"strings"
 )
 
-type joincon struct {
-	tablename string
-	condition string
+//JoinCon join条件
+type JoinCon struct {
+	TableName string
+	Condition string
 }
 
-type joincons []joincon
+//JoinCons join条件slice
+type JoinCons []JoinCon
 
-func (jc joincons) haveTable(tbName string) bool {
+//HaveTable join条件中是否已经添加了这张表的join
+func (jc JoinCons) HaveTable(tableName string) bool {
 	for _, v := range jc {
-		if v.tablename == tbName {
+		if v.TableName == tableName {
 			return true
 		}
 	}
 	return false
 }
 
-type wherecon struct {
-	query string
-	args  []interface{}
+//WhereCon where条件
+type WhereCon struct {
+	Query string
+	Args  []interface{}
 }
 
-type search struct {
-	db              *CRUD
+//Search 搜索结构体
+type Search struct {
+	db              *Table
 	fields          []string
 	tableName       string
-	joinConditions  joincons
-	whereConditions []wherecon
+	joinConditions  JoinCons
+	whereConditions []WhereCon
 	group           string
 	with            string
 	having          string
@@ -41,103 +46,86 @@ type search struct {
 
 	query string
 	args  []interface{}
-
-	raw bool
+	raw   bool
 }
 
-func (s *search) clone() *search {
+//Clone 克隆一个当前结构体
+func (s *Search) Clone() *Search {
 	clone := *s
 	return &clone
 }
 
-func (s *search) Fields(args ...string) *search {
-	//err `xxx.xxx`
-	//err `xxx.xx AS xxx`
-	//err `DISTINCT cid`
-	//	for i := 0; i < len(args); i++ {
-	//		switch args[i] {
-	//		case "id":
-	//			args[i] = s.tableName + ".id"
-	//			continue
-	//		case "*":
-	//			continue
-	//		}
-	//		if strings.Contains(args[i], ".") || strings.Contains(args[i], "AS") || strings.Contains(args[i], "as") || strings.Contains(args[i], "DISTINCT") {
-
-	//		} else {
-	//			args[i] = "`" + args[i] + "`"
-	//		}
-
-	//	}
+//Fields 需要查询的字段
+func (s *Search) Fields(args ...string) *Search {
 	s.fields = append(s.fields, args...)
 	return s
 }
 
-func (s *search) Where(query string, values ...interface{}) *search {
+//Where where语法
+func (s *Search) Where(query string, values ...interface{}) *Search {
 	id, err := strconv.Atoi(query)
 	if err != nil {
-		s.whereConditions = append(s.whereConditions, wherecon{query: query, args: values})
+		s.whereConditions = append(s.whereConditions, WhereCon{Query: query, Args: values})
 	} else {
-		s.whereConditions = append(s.whereConditions, wherecon{query: s.tableName + ".id = ?", args: []interface{}{id}})
+		s.whereConditions = append(s.whereConditions, WhereCon{Query: s.tableName + ".id = ?", Args: []interface{}{id}})
 	}
 	return s
 }
 
-func (s *search) In(field string, args ...interface{}) *search {
+//In in语法
+func (s *Search) In(field string, args ...interface{}) *Search {
 	//In没有参数的话SQL就会报错
 	if len(args) == 0 {
 		return s
 	}
-	s.whereConditions = append(s.whereConditions, wherecon{query: fmt.Sprintf("%s IN (%s)", field, placeholder(len(args))), args: args})
+	s.whereConditions = append(s.whereConditions, WhereCon{Query: fmt.Sprintf("%s IN (%s)", field, placeholder(len(args))), Args: args})
 	return s
 }
 
-func placeholder(n int) string {
-	holder := []string{}
-	for i := 0; i < n; i++ {
-		holder = append(holder, "?")
-	}
-	return strings.Join(holder, ",")
-}
-
-func (s *search) Joins(tablename string, condition ...string) *search {
+//Joins join语法，自动连表。
+func (s *Search) Joins(tablename string, condition ...string) *Search {
 	if len(condition) == 1 {
-		s.joinConditions = append(s.joinConditions, joincon{tablename: tablename, condition: condition[0]})
+		s.joinConditions = append(s.joinConditions, JoinCon{TableName: tablename, Condition: condition[0]})
 	} else {
 		if s.db.tableColumns[tablename].HaveColumn(s.tableName + "id") {
-			s.joinConditions = append(s.joinConditions, joincon{tablename: tablename, condition: fmt.Sprintf("%s.%s = %s.id", tablename, s.tableName+"id", s.tableName)})
+			s.joinConditions = append(s.joinConditions, JoinCon{TableName: tablename, Condition: fmt.Sprintf("%s.%s = %s.id", tablename, s.tableName+"id", s.tableName)})
 		} else if s.db.tableColumns[tablename].HaveColumn(s.tableName + "_id") {
-			s.joinConditions = append(s.joinConditions, joincon{tablename: tablename, condition: fmt.Sprintf("%s.%s = %s.id", tablename, s.tableName+"_id", s.tableName)})
+			s.joinConditions = append(s.joinConditions, JoinCon{TableName: tablename, Condition: fmt.Sprintf("%s.%s = %s.id", tablename, s.tableName+"_id", s.tableName)})
 		} else if s.db.tableColumns[s.tableName].HaveColumn(tablename + "id") {
-			s.joinConditions = append(s.joinConditions, joincon{tablename: tablename, condition: fmt.Sprintf("%s.%s = %s.id", s.tableName, tablename+"id", tablename)})
+			s.joinConditions = append(s.joinConditions, JoinCon{TableName: tablename, Condition: fmt.Sprintf("%s.%s = %s.id", s.tableName, tablename+"id", tablename)})
 		} else if s.db.tableColumns[s.tableName].HaveColumn(tablename + "_id") {
-			s.joinConditions = append(s.joinConditions, joincon{tablename: tablename, condition: fmt.Sprintf("%s.%s = %s.id", s.tableName, tablename+"_id", tablename)})
+			s.joinConditions = append(s.joinConditions, JoinCon{TableName: tablename, Condition: fmt.Sprintf("%s.%s = %s.id", s.tableName, tablename+"_id", tablename)})
 		}
 	}
 	return s
 }
 
-func (s *search) TableName(name string) *search {
+//TableName tableName
+func (s *Search) TableName(name string) *Search {
 	s.tableName = name
 	return s
 }
 
-func (s *search) Limit(limit interface{}) *search {
+//Limit LIMIT ?
+func (s *Search) Limit(limit interface{}) *Search {
 	s.limit = limit
 	return s
 }
 
-func (s *search) Offset(offset interface{}) *search {
+//Offset OFFSET ?
+func (s *Search) Offset(offset interface{}) *Search {
 	s.offset = offset
 	return s
 }
 
-func (s *search) Group(query string) *search {
+//Group GROUP BY
+func (s *Search) Group(query string) *Search {
 	s.group = query
 	return s
 }
 
-func (s *search) Parse() (string, []interface{}) {
+//Parse 将各个条件整合成可以查询的SQL语句和参数
+func (s *Search) Parse() (string, []interface{}) {
 	if s.raw == true {
 		return s.query, s.args
 	}
@@ -155,23 +143,23 @@ func (s *search) Parse() (string, []interface{}) {
 		fields = "*"
 	} else {
 		for i := 0; i < len(s.fields); i++ {
-			var tablename string
-			s.fields[i], tablename, _ = s.warpField(s.fields[i])
-			if tablename != s.tableName {
-				if !s.joinConditions.haveTable(tablename) {
-					s.Joins(tablename)
+			var tableName string
+			s.fields[i], tableName, _ = s.warpField(s.fields[i])
+			if tableName != s.tableName {
+				if !s.joinConditions.HaveTable(tableName) {
+					s.Joins(tableName)
 				}
 			}
 		}
 		fields = strings.Join(s.fields, ",")
 	}
 	for _, joincon := range s.joinConditions {
-		joins += fmt.Sprintf(" LEFT JOIN %s ON %s", joincon.tablename, joincon.condition)
+		joins += fmt.Sprintf(" LEFT JOIN %s ON %s", joincon.TableName, joincon.Condition)
 	}
 	for _, wherecon := range s.whereConditions {
 		paddingwhere = " WHERE "
-		wheres = append(wheres, wherecon.query)
-		s.args = append(s.args, wherecon.args...)
+		wheres = append(wheres, wherecon.Query)
+		s.args = append(s.args, wherecon.Args...)
 	}
 	if s.limit != nil {
 		limit = " LIMIT ?"
@@ -189,7 +177,7 @@ func (s *search) Parse() (string, []interface{}) {
 //DISTINCT XX
 //DISTICT XXX.XXX AS aaa
 //XXX.XXX AS aaa
-func (s *search) warpField(field string) (warpStr string, tablename string, fieldname string) {
+func (s *Search) warpField(field string) (warpStr string, tablename string, fieldname string) {
 	if strings.Contains(field, " ") {
 		if strings.Contains(field, "AS") {
 			sp := strings.Split(field, " ")
@@ -211,7 +199,7 @@ func (s *search) warpField(field string) (warpStr string, tablename string, fiel
 	return
 }
 
-func (s *search) warpFieldSingel(field string) (warpStr string, tablename string, fieldname string) {
+func (s *Search) warpFieldSingel(field string) (warpStr string, tablename string, fieldname string) {
 	if strings.Contains(field, ".") {
 		sp := strings.Split(field, ".")
 		tablename = sp[0]
@@ -232,35 +220,47 @@ func (s *search) warpFieldSingel(field string) (warpStr string, tablename string
 
 //结果展示
 
-func (s *search) RawMap() RowMap {
+//RawMap RawMap
+func (s *Search) RawMap() RowMap {
 	return s.RowMap()
 }
-func (s *search) RawsMap() RowsMap {
+
+//RawsMap RawsMap
+func (s *Search) RawsMap() RowsMap {
 	return s.RowsMap()
 }
-func (s *search) RawsMapInterface() RowsMapInterface {
+
+//RawsMapInterface RawsMapInterface
+func (s *Search) RawsMapInterface() RowsMapInterface {
 	return s.RowsMapInterface()
 }
 
-func (s *search) RowMap() RowMap {
+//RowMap RowMap
+func (s *Search) RowMap() RowMap {
 	query, args := s.Parse()
 	return s.db.Query(query, args...).RowMap()
 }
-func (s *search) RowsMap() RowsMap {
+
+//RowsMap RowsMap
+func (s *Search) RowsMap() RowsMap {
 	query, args := s.Parse()
 	return s.db.Query(query, args...).RowsMap()
 }
-func (s *search) RowsMapInterface() RowsMapInterface {
+
+//RowsMapInterface RowsMapInterface
+func (s *Search) RowsMapInterface() RowsMapInterface {
 	query, args := s.Parse()
 	return s.db.Query(query, args...).RowsMapInterface()
 }
-func (s *search) DoubleSlice() (map[string]int, [][]string) {
+
+//DoubleSlice DoubleSlice
+func (s *Search) DoubleSlice() (map[string]int, [][]string) {
 	query, args := s.Parse()
 	return s.db.Query(query, args...).DoubleSlice()
 }
 
 //Int 如果指定字段，则返回指定字段的int值，否则返回第一个字段作为int值返回。
-func (s *search) Int(args ...string) int {
+func (s *Search) Int(args ...string) int {
 	row := s.RowMap()
 	if len(args) == 0 {
 		for _, v := range row {
@@ -275,7 +275,7 @@ func (s *search) Int(args ...string) int {
 }
 
 //String like int
-func (s *search) String(args ...string) string {
+func (s *Search) String(args ...string) string {
 	row := s.RowMap()
 	if len(args) == 0 {
 		for _, v := range row {
@@ -287,12 +287,14 @@ func (s *search) String(args ...string) string {
 	return ""
 }
 
-func (s *search) Struct(v interface{}) {
+//Struct 将查询的结构放入到结构体当中
+func (s *Search) Struct(v interface{}) {
 	query, args := s.Parse()
 	s.db.FindAll(v, append([]interface{}{query}, args...)...)
 }
 
-func (s *search) Count() int {
+//Count 计算这次查询结果的个数
+func (s *Search) Count() int {
 	var count int
 	s.fields = []string{"COUNT(*)"}
 	query, args := s.Parse()

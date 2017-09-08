@@ -1,9 +1,11 @@
 package crud
 
-import "strconv"
-import "fmt"
-import "strings"
-import "errors"
+import (
+	"errors"
+	"fmt"
+	"strconv"
+	"strings"
+)
 
 // Table 是对CRUD进一层的封装
 type Table struct {
@@ -148,4 +150,38 @@ func (t *Table) CreateOrUpdate(m map[string]interface{}, keys ...string) error {
 func (t *Table) Delete(m map[string]interface{}) (int64, error) {
 	ks, vs := ksvs(m, " = ? ")
 	return t.Exec(fmt.Sprintf("DELETE FROM %s WHERE %s", t.tableName, strings.Join(ks, "AND")), vs...).RowsAffected()
+}
+
+//Clone 克隆
+func (t *Table) Clone() *Table {
+	newT := &Table{
+		CRUD:      t.CRUD,
+		tableName: t.tableName,
+	}
+	if newT.Search == nil {
+		newT.Search = &Search{db: newT, tableName: t.tableName}
+	} else {
+		newT.Search = t.Search.Clone()
+	}
+	return newT
+}
+
+//Where where
+func (t *Table) Where(query string, args ...interface{}) *Table {
+	return t.Clone().Search.Where(query, args...).db
+}
+
+//In In
+func (t *Table) In(field string, args ...interface{}) *Table {
+	return t.Clone().Search.In(field, args...).db
+}
+
+//Joins joins
+func (t *Table) Joins(query string, args ...string) *Table {
+	return t.Clone().Search.Joins(query, args...).db
+}
+
+//Fields fields
+func (t *Table) Fields(args ...string) *Table {
+	return t.Clone().Search.Fields(args...).db
 }
