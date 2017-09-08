@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	fullTitles         = []string{"API", "CPU", "CSS", "DNS", "EOF", "GUID", "HTML", "HTTP", "HTTPS", "ID", "UID", "IP", "JSON", "QPS", "RAM", "RHS", "RPC", "SLA", "SMTP", "SSH", "TLS", "TTL", "UI", "UID", "UUID", "URI", "URL", "UTF8", "VM", "XML", "XSRF", "XSS", "PY"}
+	fullTitles         = []string{"API", "CPU", "CSS", "CID", "DNS", "EOF", "GUID", "HTML", "HTTP", "HTTPS", "ID", "UID", "IP", "JSON", "QPS", "RAM", "RHS", "RPC", "SLA", "SMTP", "SSH", "TLS", "TTL", "UI", "UID", "UUID", "URI", "URL", "UTF8", "VM", "XML", "XSRF", "XSS", "PY"}
 	fullTitlesReplacer *strings.Replacer
 	//m和rm公用同一个
 	dbNameMap = safemap.NewMapStringString()
