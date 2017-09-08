@@ -286,10 +286,10 @@ func (r *SQLRows) Find(v interface{}) error {
 	//如果查询是数组的话
 	if rv.Kind() == reflect.Slice {
 		for idx := range m {
-			ele := reflect.New(rv.Type().Elem())
-			for i := 0; i < ele.Elem().NumField(); i++ {
+			elem := reflect.New(rv.Type().Elem())
+			for i := 0; i < elem.Elem().NumField(); i++ {
 				var dbn string
-				var field = reflect.TypeOf(v).Elem().Field(i)
+				var field = elem.Elem().Type().Field(i)
 				var tagName = field.Tag.Get("dbname")
 				if tagName != "" {
 					dbn = tagName
@@ -298,10 +298,10 @@ func (r *SQLRows) Find(v interface{}) error {
 				}
 				dbv, ok := m[idx][dbn]
 				if ok && dbv != nil {
-					r.setValue(ele.Elem().Field(i), dbv)
+					r.setValue(elem.Elem().Field(i), dbv)
 				}
 			}
-			rv.Set(reflect.Append(rv, ele.Elem()))
+			rv.Set(reflect.Append(rv, elem.Elem()))
 		}
 
 	} else {
@@ -314,7 +314,7 @@ func (r *SQLRows) Find(v interface{}) error {
 				elem := reflect.ValueOf(v).Elem()
 				for i := 0; i < elem.NumField(); i++ {
 					var dbn string
-					var field = reflect.TypeOf(v).Elem().Field(i)
+					var field = elem.Elem().Type().Field(i)
 					var tagName = field.Tag.Get("dbname")
 					if tagName != "" {
 						dbn = tagName
