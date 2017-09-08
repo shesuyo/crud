@@ -290,7 +290,7 @@ func (r *SQLRows) Find(v interface{}) error {
 			for i := 0; i < ele.Elem().NumField(); i++ {
 				var dbn string
 				var field = reflect.TypeOf(v).Elem().Field(i)
-				var tagName = field.Tag.Get("dname")
+				var tagName = field.Tag.Get("dbname")
 				if tagName != "" {
 					dbn = tagName
 				} else {
@@ -315,7 +315,7 @@ func (r *SQLRows) Find(v interface{}) error {
 				for i := 0; i < elem.NumField(); i++ {
 					var dbn string
 					var field = reflect.TypeOf(v).Elem().Field(i)
-					var tagName = field.Tag.Get("dname")
+					var tagName = field.Tag.Get("dbname")
 					if tagName != "" {
 						dbn = tagName
 					} else {
