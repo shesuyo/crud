@@ -80,8 +80,8 @@ func (t *Table) Create(m map[string]interface{}, checks ...string) (int64, error
 			return 0, ErrInsertRepeat
 		}
 	}
-	if t.tableColumns[t.tableName].HaveColumn("created_at") {
-		m["created_at"] = time.Now().Format(TimeFormat)
+	if t.tableColumns[t.tableName].HaveColumn(CreatedAt) {
+		m[CreatedAt] = time.Now().Format(TimeFormat)
 	}
 	ks, vs := ksvs(m)
 	id, err := t.Exec(fmt.Sprintf("INSERT INTO `%s` (%s) VALUES (%s)", t.tableName, strings.Join(ks, ","), argslice(len(ks))), vs...).LastInsertId()
@@ -96,8 +96,8 @@ func (t *Table) Create(m map[string]interface{}, checks ...string) (int64, error
 
 //Reads 查找
 func (t *Table) Reads(m map[string]interface{}) []map[string]string {
-	if t.tableColumns[t.tableName].HaveColumn("is_deleted") {
-		m["is_deleted"] = 0
+	if t.tableColumns[t.tableName].HaveColumn(IsDeleted) {
+		m[IsDeleted] = 0
 	}
 	//SELECT * FROM address WHERE id = 1 AND uid = 27
 	ks, vs := ksvs(m, " = ? ")
@@ -118,8 +118,8 @@ func (t *Table) Update(m map[string]interface{}, keys ...string) error {
 	if len(keys) == 0 {
 		keys = append(keys, "id")
 	}
-	if t.tableColumns[t.tableName].HaveColumn("updated_at") {
-		m["updated_at"] = time.Now().Format(TimeFormat)
+	if t.tableColumns[t.tableName].HaveColumn(UpdatedAt) {
+		m[UpdatedAt] = time.Now().Format(TimeFormat)
 	}
 	keysValue := []interface{}{}
 	whereks := []string{}
@@ -160,7 +160,7 @@ func (t *Table) CreateOrUpdate(m map[string]interface{}, keys ...string) error {
 // Delete 删除
 func (t *Table) Delete(m map[string]interface{}) (int64, error) {
 	ks, vs := ksvs(m, " = ? ")
-	if t.tableColumns[t.tableName].HaveColumn("is_deleted") {
+	if t.tableColumns[t.tableName].HaveColumn(IsDeleted) {
 		return t.Exec(fmt.Sprintf("UPDATE `%s` SET is_deleted = '1', deleted_at = '%s' WHERE %s", t.tableName, time.Now().Format(TimeFormat), strings.Join(ks, "AND")), vs...).RowsAffected()
 	}
 	return t.Exec(fmt.Sprintf("DELETE FROM %s WHERE %s", t.tableName, strings.Join(ks, "AND")), vs...).RowsAffected()

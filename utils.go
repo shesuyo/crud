@@ -104,13 +104,6 @@ func argslice(l int) string {
 	return strings.Join(s, ",")
 }
 
-//会用到的函数
-const (
-	DBName       = "DBName"
-	BeforeCreate = "BeforeCreate"
-	AfterCreate  = "AfterCreate"
-)
-
 //structToMap 将结构体转换成map[string]interface{}
 func structToMap(v reflect.Value) map[string]interface{} {
 	v = reflect.Indirect(v)

@@ -237,8 +237,8 @@ func (db *DataBase) Create(obj interface{}) (int64, error) {
 	if v.Kind() != reflect.Ptr {
 		return 0, ErrMustNeedAddr
 	}
-	beforeFunc := v.MethodByName("BeforeCreate")
-	afterFunc := v.MethodByName("AfterCreate")
+	beforeFunc := v.MethodByName(BeforeCreate)
+	afterFunc := v.MethodByName(AfterCreate)
 	tableName := getStructDBName(v)
 
 	// 这里的处理应该是有才处理，没有不管。
@@ -296,8 +296,8 @@ func (db *DataBase) Update(obj interface{}) error {
 	if v.Kind() != reflect.Ptr {
 		return ErrMustNeedAddr
 	}
-	beforeFunc := v.MethodByName("BeforeUpdate")
-	afterFunc := v.MethodByName("AfterUpdate")
+	beforeFunc := v.MethodByName(BeforeUpdate)
+	afterFunc := v.MethodByName(AfterUpdate)
 	if beforeFunc.IsValid() {
 		beforeFunc.Call(nil)
 	}
@@ -339,8 +339,8 @@ func (db *DataBase) Delete(obj interface{}) (int64, error) {
 	if v.Kind() != reflect.Ptr {
 		return 0, ErrMustNeedAddr
 	}
-	beforeFunc := v.MethodByName("BeforeDelete")
-	afterFunc := v.MethodByName("AfterDelete")
+	beforeFunc := v.MethodByName(BeforeDelete)
+	afterFunc := v.MethodByName(AfterDelete)
 	if beforeFunc.IsValid() {
 		beforeFunc.Call(nil)
 	}
@@ -392,32 +392,8 @@ func (db *DataBase) FormCreate(v interface{}, w http.ResponseWriter, r *http.Req
 		return
 	}
 	m["id"] = id
-	delete(m, "is_deleted")
+	delete(m, IsDeleted)
 	db.dataRender(w, m)
-
-	// names := []string{}
-	// values := []string{}
-	// args := []interface{}{}
-
-	//cols := db.getColums(tableName)
-	// if cols.HaveColumn("created_at") {
-	// 	m["created_at"] = time.Now().Format(TimeFormat)
-	// }
-	// if cols.HaveColumn("is_deleted") {1
-	// 	m["is_deleted"] = 0
-	// }
-	// if cols.HaveColumn("updated_at") {
-	// 	m["updated_at"] = time.Now().Format(TimeFormat)
-	// }
-
-	// for k, v := range m {
-	// 	names = append(names, "`"+k+"`")
-	// 	values = append(values, "?")
-	// 	args = append(args, v)
-	// }
-	// ret := db.Exec(fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", tableName, strings.Join(names, ","), strings.Join(values, ",")), args...)
-	// id, err := ret.LastInsertId()
-
 }
 
 // FormRead 表单查找
@@ -438,49 +414,6 @@ func (db *DataBase) FormRead(v interface{}, w http.ResponseWriter, r *http.Reque
 	tableName := getStructDBName(reflect.ValueOf(v))
 	data := db.Table(tableName).Reads(m)
 	db.dataRender(w, data)
-	//	看一下是不是其他表关联查找
-	// cols := db.getColums(tableName)
-	// ctn := "" //combine table name
-	// for k := range m {
-	// 	if !cols.HaveColumn(k) {
-	// 		if strings.Contains(k, "_id") {
-	// 			atn := strings.TrimRight(k, "_id") //another table name
-	// 			tmptn := atn + "_" + tableName
-	// 			//db.X("检查表" + tmptn)
-	// 			if db.haveTablename(tmptn) {
-	// 				if db.tableColumns[tmptn].HaveColumn(k) {
-	// 					ctn = tmptn
-	// 				}
-	// 			}
-	// 			//db.X("检查表" + tmptn)
-	// 			tmptn = tableName + "_" + atn
-	// 			if db.haveTablename(tmptn) {
-	// 				if db.tableColumns[tmptn].HaveColumn(k) {
-	// 					ctn = tmptn
-	// 				}
-	// 			}
-	// 		}
-	// 	}
-	// }
-	// if db.tableColumns[tableName].HaveColumn("is_deleted") {
-	// 	m["is_deleted"] = "0"
-	// }
-	// if ctn == "" {
-	// 	//如果没有设置ID，则查找所有的。
-	// 	if m == nil || len(m) == 0 {
-	// 		data := db.Query(fmt.Sprintf("SELECT * FROM `%s`", tableName)).RawsMdbnterface()
-	// 		db.dataRender(w, data)
-	// 	} else {
-	// 		ks, vs := ksvs(m, " = ? ")
-	// 		data := db.Query(fmt.Sprintf("SELECT * FROM `%s` WHERE %s", tableName, strings.Join(ks, "AND")), vs...).RawsMdbnterface()
-	// 		db.dataRender(w, data)
-	// 	}
-	// } else {
-	// 	ks, vs := ksvs(m, " = ? ")
-	// 	//SELECT `section`.* FROM `group_section` LEFT JOIN section ON group_section.section_id = section.id WHERE group_id = 1
-	// 	data := db.Query(fmt.Sprintf("SELECT `%s`.* FROM `%s` LEFT JOIN `%s` ON `%s`.`%s` = `%s`.`%s` WHERE %s", tableName, ctn, tableName, ctn, tableName+"_id", tableName, "id", strings.Join(ks, "AND")), vs...).RawsMdbnterface()
-	// 	db.dataRender(w, data)
-	// }
 }
 
 // FormUpdate 表单更新
@@ -497,21 +430,6 @@ func (db *DataBase) FormUpdate(v interface{}, w http.ResponseWriter, r *http.Req
 		return
 	}
 	db.ExecSuccessRender(w)
-	//	UPDATE task SET name = ? WHERE id = 3;
-	//	现在只支持根据ID进行更新
-	// id := m["id"]
-	// delete(m, "id")
-	// if db.tableColumns[tableName].HaveColumn("updated_at") {
-	// 	m["updated_at"] = time.Now().Format(TimeFormat)
-	// }
-	// ks, vs := ksvs(m, " = ? ")
-	// vs = append(vs, id)
-	// _, err := db.Exec(fmt.Sprintf("UPDATE `%s` SET %s WHERE %s = ?", tableName, strings.Join(ks, ","), "id"), vs...).RowsAffected()
-	// if err != nil {
-	// 	db.execErrorRender(w)
-	// 	return
-	// }
-
 }
 
 // FormDelete 表单删除
@@ -528,18 +446,6 @@ func (db *DataBase) FormDelete(v interface{}, w http.ResponseWriter, r *http.Req
 		return
 	}
 	db.ExecSuccessRender(w)
-	// if db.tableColumns[tableName].HaveColumn("is_deleted") {
-	// 	if db.tableColumns[tableName].HaveColumn("deleted_at") {
-	// 		r.Form["deleted_at"] = []string{time.Now().Format(TimeFormat)}
-	// 	}
-	// 	r.Form["is_deleted"] = []string{"1"}
-	// 	db.Update(v, w, r)
-	// 	return
-	// }
-	//	现在只支持根据ID进行删除
-	// ks, vs := ksvs(m, " = ? ")
-	// _, err := db.Exec(fmt.Sprintf("DELETE FROM %s WHERE %s ", tableName, strings.Join(ks, "AND")), vs...).RowsAffected()
-
 }
 
 // Find 将查找数据放到结构体里面
@@ -601,7 +507,7 @@ func (db *DataBase) Find(obj interface{}, args ...interface{}) error {
 			}
 		}
 
-		if db.tableColumns[tableName].HaveColumn("is_deleted") {
+		if db.tableColumns[tableName].HaveColumn(IsDeleted) {
 			where += " AND is_deleted = 0"
 		}
 

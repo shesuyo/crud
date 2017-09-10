@@ -1,7 +1,6 @@
 package crud
 
 import (
-	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
@@ -17,6 +16,21 @@ const (
 	UPDATE = U
 	D      = "DELETE"
 	DELET  = D
+
+	DBName = "DBName"
+
+	BeforeCreate = "BeforeCreate"
+	AfterCreate  = "AfterCreate"
+	AfterFind    = "AfterFind"
+	BeforeUpdate = "BeforeUpdate"
+	AfterUpdate  = "AfterUpdate"
+	BeforeDelete = "BeforeDelete"
+	AfterDelete  = "AfterDelete"
+
+	CreatedAt = "created_at"
+	UpdatedAt = "updated_at"
+	DeletedAt = "deleted_at"
+	IsDeleted = "is_deleted"
 )
 
 //DBColums 多列
@@ -119,10 +133,8 @@ func getStructDBName(v reflect.Value) string {
 	// 如果有DBName这个方法就调用这个获取表名，如果没有的话就通过toDBName获取表名
 	dbNameFunc := v.MethodByName(DBName)
 	if dbNameFunc.IsValid() {
-		fmt.Println("is Valid")
 		dbName = dbNameFunc.Call(nil)[0].String()
 	} else {
-		fmt.Println("NOT VALID")
 		dbName = ToDBName(v.Type().Name())
 	}
 	return dbName
