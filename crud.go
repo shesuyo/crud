@@ -35,10 +35,8 @@ var (
 // Render 用于对接http.HandleFunc直接调用CRUD
 type Render func(w http.ResponseWriter, err error, data ...interface{})
 
-// CRUD 本包关键类
-type CRUD struct {
-	*Search
-
+// DataBase 数据库链接
+type DataBase struct {
 	debug          bool
 	tableColumns   map[string]Columns
 	dataSourceName string
@@ -47,15 +45,15 @@ type CRUD struct {
 	render Render //crud本身不渲染数据，通过其他地方传入一个渲染的函数，然后渲染都是那边处理。
 }
 
-// NewCRUD 创建一个新的CRUD链接
-func NewCRUD(dataSourceName string, render ...Render) *CRUD {
+// NewDataBase 创建一个新的数据库链接
+func NewDataBase(dataSourceName string, render ...Render) (*DataBase, error) {
 	db, err := sql.Open("mysql", dataSourceName)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	db.SetMaxIdleConns(20)
 	db.SetMaxOpenConns(20)
-	crud := &CRUD{
+	crud := &DataBase{
 		debug:          false,
 		tableColumns:   make(map[string]Columns),
 		dataSourceName: dataSourceName,
@@ -74,46 +72,28 @@ func NewCRUD(dataSourceName string, render ...Render) *CRUD {
 			crud.getColumns(table)
 		}
 	}
-	return crud
+	return crud, nil
 }
-
-// func (api *CRUD) clone() *CRUD {
-// 	c := CRUD{
-// 		debug: api.debug,
-
-// 		tableColumns:   api.tableColumns,
-// 		dataSourceName: api.dataSourceName,
-// 		db:             api.db,
-// 		render:         api.render,
-// 	}
-// 	if api.Search == nil {
-// 		c.Search = &Search{}
-// 	} else {
-// 		c.Search = api.Search.Clone()
-// 	}
-// 	c.Search.db = &c
-// 	return &c
-// }
 
 /*
 	CRUD table
 */
 
 // ExecSuccessRender 渲染成功模板
-func (api *CRUD) ExecSuccessRender(w http.ResponseWriter) {
-	api.render(w, nil, nil)
+func (db *DataBase) ExecSuccessRender(w http.ResponseWriter) {
+	db.render(w, nil, nil)
 }
 
-func (api *CRUD) argsErrorRender(w http.ResponseWriter) {
-	api.render(w, ErrArgs)
+func (db *DataBase) argsErrorRender(w http.ResponseWriter) {
+	db.render(w, ErrArgs)
 }
 
-func (api *CRUD) execErrorRender(w http.ResponseWriter) {
-	api.render(w, ErrExec)
+func (db *DataBase) execErrorRender(w http.ResponseWriter) {
+	db.render(w, ErrExec)
 }
 
-func (api *CRUD) dataRender(w http.ResponseWriter, data interface{}) {
-	api.render(w, nil, data)
+func (db *DataBase) dataRender(w http.ResponseWriter, data interface{}) {
+	db.render(w, nil, data)
 }
 
 /*
@@ -121,22 +101,22 @@ func (api *CRUD) dataRender(w http.ResponseWriter, data interface{}) {
 */
 
 // HaveTable 是否有这张表
-func (api *CRUD) HaveTable(tablename string) bool {
-	return api.haveTablename(tablename)
+func (db *DataBase) HaveTable(tablename string) bool {
+	return db.haveTablename(tablename)
 }
 
-func (api *CRUD) haveTablename(tableName string) bool {
-	_, ok := api.tableColumns[tableName]
+func (db *DataBase) haveTablename(tableName string) bool {
+	_, ok := db.tableColumns[tableName]
 	return ok
 }
 
 // 获取表中所有列名
-func (api *CRUD) getColumns(tableName string) Columns {
-	names, ok := api.tableColumns[tableName]
+func (db *DataBase) getColumns(tableName string) Columns {
+	names, ok := db.tableColumns[tableName]
 	if ok {
 		return names
 	}
-	rows := api.Query("SELECT COLUMN_NAME,COLUMN_COMMENT,COLUMN_TYPE,DATA_TYPE,IS_NULLABLE FROM information_schema.`COLUMNS` WHERE table_name= ? ", tableName).RowsMap()
+	rows := db.Query("SELECT COLUMN_NAME,COLUMN_COMMENT,COLUMN_TYPE,DATA_TYPE,IS_NULLABLE FROM information_schema.`COLUMNS` WHERE table_name= ? ", tableName).RowsMap()
 	cols := make(map[string]Column)
 	for _, v := range rows {
 		cols[v["COLUMN_NAME"]] = Column{
@@ -148,13 +128,20 @@ func (api *CRUD) getColumns(tableName string) Columns {
 		}
 		DBColums[v["COLUMN_NAME"]] = cols[v["COLUMN_NAME"]]
 	}
-	api.tableColumns[tableName] = cols
+	db.tableColumns[tableName] = cols
 	return cols
 }
 
 // Table 返回一个Table
-func (api *CRUD) Table(tableName string) *Table {
-	return &Table{CRUD: api, tableName: tableName}
+func (db *DataBase) Table(tableName string) *Table {
+	table := new(Table)
+	table.DataBase = db
+	table.tableName = tableName
+	table.Search = &Search{
+		table:     table,
+		tableName: tableName,
+	}
+	return table
 }
 
 /*
@@ -162,31 +149,31 @@ func (api *CRUD) Table(tableName string) *Table {
 */
 
 // Debug 是否开启debug功能 true为开启
-func (api *CRUD) Debug(isDebug bool) *CRUD {
-	api.debug = isDebug
-	return api
+func (db *DataBase) Debug(isDebug bool) *DataBase {
+	db.debug = isDebug
+	return db
 }
 
 // X 用于DEBUG
-func (*CRUD) X(args ...interface{}) {
+func (*DataBase) X(args ...interface{}) {
 	fmt.Println("[DEBUG]", args)
 }
 
 // Log 打印日志
-func (api *CRUD) Log(args ...interface{}) {
-	if api.debug {
-		api.log(args...)
+func (db *DataBase) Log(args ...interface{}) {
+	if db.debug {
+		db.log(args...)
 	}
 }
 
 // LogSQL 会将sql语句中的?替换成相应的参数，让DEBUG的时候可以直接复制SQL语句去使用。
-func (api *CRUD) LogSQL(sql string, args ...interface{}) {
-	if api.debug {
-		api.log(getFullSQL(sql, args...))
+func (db *DataBase) LogSQL(sql string, args ...interface{}) {
+	if db.debug {
+		db.log(getFullSQL(sql, args...))
 	}
 }
 
-func (api *CRUD) log(args ...interface{}) {
+func (db *DataBase) log(args ...interface{}) {
 	log.Println(args...)
 }
 
@@ -198,15 +185,15 @@ func getFullSQL(sql string, args ...interface{}) string {
 }
 
 // 如果发生了异常就打印调用栈。
-func (api *CRUD) stack(err error, sql string, args ...interface{}) {
+func (db *DataBase) stack(err error, sql string, args ...interface{}) {
 	buf := make([]byte, 1<<10)
 	runtime.Stack(buf, true)
 	log.Printf("%s\n%s\n%s\n", err.Error(), getFullSQL(sql, args...), buf)
 }
 
 // RowSQL Query alias
-func (api *CRUD) RowSQL(sql string, args ...interface{}) *SQLRows {
-	return api.Query(sql, args...)
+func (db *DataBase) RowSQL(sql string, args ...interface{}) *SQLRows {
+	return db.Query(sql, args...)
 }
 
 /*
@@ -214,35 +201,33 @@ func (api *CRUD) RowSQL(sql string, args ...interface{}) *SQLRows {
 */
 
 // Query 用于底层查询，一般是SELECT语句
-func (api *CRUD) Query(sql string, args ...interface{}) *SQLRows {
-	db := api.DB()
-	api.LogSQL(sql, args...)
-	rows, err := db.Query(sql, args...)
+func (db *DataBase) Query(sql string, args ...interface{}) *SQLRows {
+	db.LogSQL(sql, args...)
+	rows, err := db.DB().Query(sql, args...)
 
 	if err != nil {
-		api.stack(err, sql, args...)
+		db.stack(err, sql, args...)
 	}
 	return &SQLRows{rows: rows, err: err}
 }
 
 // Exec 用于底层执行，一般是INSERT INTO、DELETE、UPDATE。
-func (api *CRUD) Exec(sql string, args ...interface{}) sql.Result {
-	db := api.DB()
-	api.LogSQL(sql, args...)
-	ret, err := db.Exec(sql, args...)
+func (db *DataBase) Exec(sql string, args ...interface{}) sql.Result {
+	db.LogSQL(sql, args...)
+	ret, err := db.DB().Exec(sql, args...)
 	if err != nil {
-		api.stack(err, sql, args...)
+		db.stack(err, sql, args...)
 	}
 	return ret
 }
 
 // DB 返回一个DB链接，查询后一定要关闭col，而不能关闭*sql.DB。
-func (api *CRUD) DB() *sql.DB {
-	return api.db
+func (db *DataBase) DB() *sql.DB {
+	return db.db
 }
 
 //Create 根据相应单个结构体进行创建
-func (api *CRUD) Create(obj interface{}) (int64, error) {
+func (db *DataBase) Create(obj interface{}) (int64, error) {
 	//一定要是地址
 	//需要检查Before函数
 	//需要按需转换成map(考虑ignore)
@@ -268,7 +253,7 @@ func (api *CRUD) Create(obj interface{}) (int64, error) {
 		}
 	}
 	m := structToMap(v)
-	id, err := api.Table(tableName).Create(m)
+	id, err := db.Table(tableName).Create(m)
 
 	rID := v.Elem().FieldByName("ID")
 	if rID.IsValid() {
@@ -282,7 +267,7 @@ func (api *CRUD) Create(obj interface{}) (int64, error) {
 }
 
 //Creates 根据相应多个结构体进行创建
-func (api *CRUD) Creates(objs interface{}) ([]int64, error) {
+func (db *DataBase) Creates(objs interface{}) ([]int64, error) {
 	ids := []int64{}
 	v := reflect.ValueOf(objs)
 	if v.Kind() != reflect.Ptr {
@@ -293,7 +278,7 @@ func (api *CRUD) Creates(objs interface{}) ([]int64, error) {
 	}
 
 	for i, num := 0, v.Elem().Len(); i < num; i++ {
-		id, err := api.Create(v.Elem().Index(i).Addr().Interface())
+		id, err := db.Create(v.Elem().Index(i).Addr().Interface())
 		if err != nil {
 			return ids, err
 		}
@@ -305,7 +290,7 @@ func (api *CRUD) Creates(objs interface{}) ([]int64, error) {
 }
 
 //Update Update
-func (api *CRUD) Update(obj interface{}) error {
+func (db *DataBase) Update(obj interface{}) error {
 	//根据ID进行Update
 	v := reflect.ValueOf(obj)
 	if v.Kind() != reflect.Ptr {
@@ -318,7 +303,7 @@ func (api *CRUD) Update(obj interface{}) error {
 	}
 	tableName := getStructDBName(v)
 	m := structToMap(v)
-	err := api.Table(tableName).Update(m)
+	err := db.Table(tableName).Update(m)
 
 	if err != nil {
 		return err
@@ -330,7 +315,7 @@ func (api *CRUD) Update(obj interface{}) error {
 }
 
 //Updates Updates
-func (api *CRUD) Updates(objs interface{}) error {
+func (db *DataBase) Updates(objs interface{}) error {
 	v := reflect.ValueOf(objs)
 	if v.Kind() != reflect.Ptr {
 		return ErrMustNeedAddr
@@ -340,7 +325,7 @@ func (api *CRUD) Updates(objs interface{}) error {
 	}
 
 	for i, num := 0, v.Elem().Len(); i < num; i++ {
-		err := api.Update(v.Elem().Index(i).Addr().Interface())
+		err := db.Update(v.Elem().Index(i).Addr().Interface())
 		if err != nil {
 			return err
 		}
@@ -349,7 +334,7 @@ func (api *CRUD) Updates(objs interface{}) error {
 }
 
 //Delete Delete
-func (api *CRUD) Delete(obj interface{}) (int64, error) {
+func (db *DataBase) Delete(obj interface{}) (int64, error) {
 	v := reflect.ValueOf(obj)
 	if v.Kind() != reflect.Ptr {
 		return 0, ErrMustNeedAddr
@@ -365,7 +350,7 @@ func (api *CRUD) Delete(obj interface{}) (int64, error) {
 	}
 	tableName := getStructDBName(v)
 
-	count, err := api.Table(tableName).Delete(map[string]interface{}{"id": id})
+	count, err := db.Table(tableName).Delete(map[string]interface{}{"id": id})
 	if afterFunc.IsValid() {
 		afterFunc.Call(nil)
 	}
@@ -373,7 +358,7 @@ func (api *CRUD) Delete(obj interface{}) (int64, error) {
 }
 
 //Deletes Deletes
-func (api *CRUD) Deletes(objs interface{}) (int64, error) {
+func (db *DataBase) Deletes(objs interface{}) (int64, error) {
 	var affCount int64
 	v := reflect.ValueOf(objs)
 	if v.Kind() != reflect.Ptr {
@@ -384,7 +369,7 @@ func (api *CRUD) Deletes(objs interface{}) (int64, error) {
 	}
 
 	for i, num := 0, v.Elem().Len(); i < num; i++ {
-		aff, err := api.Delete(v.Elem().Index(i).Addr().Interface())
+		aff, err := db.Delete(v.Elem().Index(i).Addr().Interface())
 		affCount += aff
 		if err != nil {
 			return affCount, err
@@ -394,27 +379,27 @@ func (api *CRUD) Deletes(objs interface{}) (int64, error) {
 }
 
 // FormCreate 创建，表单创建。
-func (api *CRUD) FormCreate(v interface{}, w http.ResponseWriter, r *http.Request) {
+func (db *DataBase) FormCreate(v interface{}, w http.ResponseWriter, r *http.Request) {
 	tableName := getStructDBName(reflect.ValueOf(v))
 	m := parseRequest(v, r, C)
 	if m == nil || len(m) == 0 {
-		api.argsErrorRender(w)
+		db.argsErrorRender(w)
 		return
 	}
-	id, err := api.Table(tableName).Create(m)
+	id, err := db.Table(tableName).Create(m)
 	if err != nil {
-		api.execErrorRender(w)
+		db.execErrorRender(w)
 		return
 	}
 	m["id"] = id
 	delete(m, "is_deleted")
-	api.dataRender(w, m)
+	db.dataRender(w, m)
 
 	// names := []string{}
 	// values := []string{}
 	// args := []interface{}{}
 
-	//cols := api.getColums(tableName)
+	//cols := db.getColums(tableName)
 	// if cols.HaveColumn("created_at") {
 	// 	m["created_at"] = time.Now().Format(TimeFormat)
 	// }
@@ -430,7 +415,7 @@ func (api *CRUD) FormCreate(v interface{}, w http.ResponseWriter, r *http.Reques
 	// 	values = append(values, "?")
 	// 	args = append(args, v)
 	// }
-	// ret := api.Exec(fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", tableName, strings.Join(names, ","), strings.Join(values, ",")), args...)
+	// ret := db.Exec(fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", tableName, strings.Join(names, ","), strings.Join(values, ",")), args...)
 	// id, err := ret.LastInsertId()
 
 }
@@ -443,7 +428,7 @@ func (api *CRUD) FormCreate(v interface{}, w http.ResponseWriter, r *http.Reques
 
 	CRUD FormRead -> table Read
 */
-func (api *CRUD) FormRead(v interface{}, w http.ResponseWriter, r *http.Request) {
+func (db *DataBase) FormRead(v interface{}, w http.ResponseWriter, r *http.Request) {
 	//	这里传进来的参数一定是要有用的参数，如果是没有用的参数被传进来了，那么会报参数错误，或者显示执行成功数据会乱。
 	//	这里处理last_XXX
 	//	处理翻页的问题
@@ -451,116 +436,116 @@ func (api *CRUD) FormRead(v interface{}, w http.ResponseWriter, r *http.Request)
 	m := parseRequest(v, r, R)
 
 	tableName := getStructDBName(reflect.ValueOf(v))
-	data := api.Table(tableName).Reads(m)
-	api.dataRender(w, data)
+	data := db.Table(tableName).Reads(m)
+	db.dataRender(w, data)
 	//	看一下是不是其他表关联查找
-	// cols := api.getColums(tableName)
+	// cols := db.getColums(tableName)
 	// ctn := "" //combine table name
 	// for k := range m {
 	// 	if !cols.HaveColumn(k) {
 	// 		if strings.Contains(k, "_id") {
 	// 			atn := strings.TrimRight(k, "_id") //another table name
 	// 			tmptn := atn + "_" + tableName
-	// 			//api.X("检查表" + tmptn)
-	// 			if api.haveTablename(tmptn) {
-	// 				if api.tableColumns[tmptn].HaveColumn(k) {
+	// 			//db.X("检查表" + tmptn)
+	// 			if db.haveTablename(tmptn) {
+	// 				if db.tableColumns[tmptn].HaveColumn(k) {
 	// 					ctn = tmptn
 	// 				}
 	// 			}
-	// 			//api.X("检查表" + tmptn)
+	// 			//db.X("检查表" + tmptn)
 	// 			tmptn = tableName + "_" + atn
-	// 			if api.haveTablename(tmptn) {
-	// 				if api.tableColumns[tmptn].HaveColumn(k) {
+	// 			if db.haveTablename(tmptn) {
+	// 				if db.tableColumns[tmptn].HaveColumn(k) {
 	// 					ctn = tmptn
 	// 				}
 	// 			}
 	// 		}
 	// 	}
 	// }
-	// if api.tableColumns[tableName].HaveColumn("is_deleted") {
+	// if db.tableColumns[tableName].HaveColumn("is_deleted") {
 	// 	m["is_deleted"] = "0"
 	// }
 	// if ctn == "" {
 	// 	//如果没有设置ID，则查找所有的。
 	// 	if m == nil || len(m) == 0 {
-	// 		data := api.Query(fmt.Sprintf("SELECT * FROM `%s`", tableName)).RawsMapInterface()
-	// 		api.dataRender(w, data)
+	// 		data := db.Query(fmt.Sprintf("SELECT * FROM `%s`", tableName)).RawsMdbnterface()
+	// 		db.dataRender(w, data)
 	// 	} else {
 	// 		ks, vs := ksvs(m, " = ? ")
-	// 		data := api.Query(fmt.Sprintf("SELECT * FROM `%s` WHERE %s", tableName, strings.Join(ks, "AND")), vs...).RawsMapInterface()
-	// 		api.dataRender(w, data)
+	// 		data := db.Query(fmt.Sprintf("SELECT * FROM `%s` WHERE %s", tableName, strings.Join(ks, "AND")), vs...).RawsMdbnterface()
+	// 		db.dataRender(w, data)
 	// 	}
 	// } else {
 	// 	ks, vs := ksvs(m, " = ? ")
 	// 	//SELECT `section`.* FROM `group_section` LEFT JOIN section ON group_section.section_id = section.id WHERE group_id = 1
-	// 	data := api.Query(fmt.Sprintf("SELECT `%s`.* FROM `%s` LEFT JOIN `%s` ON `%s`.`%s` = `%s`.`%s` WHERE %s", tableName, ctn, tableName, ctn, tableName+"_id", tableName, "id", strings.Join(ks, "AND")), vs...).RawsMapInterface()
-	// 	api.dataRender(w, data)
+	// 	data := db.Query(fmt.Sprintf("SELECT `%s`.* FROM `%s` LEFT JOIN `%s` ON `%s`.`%s` = `%s`.`%s` WHERE %s", tableName, ctn, tableName, ctn, tableName+"_id", tableName, "id", strings.Join(ks, "AND")), vs...).RawsMdbnterface()
+	// 	db.dataRender(w, data)
 	// }
 }
 
 // FormUpdate 表单更新
-func (api *CRUD) FormUpdate(v interface{}, w http.ResponseWriter, r *http.Request) {
+func (db *DataBase) FormUpdate(v interface{}, w http.ResponseWriter, r *http.Request) {
 	tableName := getStructDBName(reflect.ValueOf(v))
 	m := parseRequest(v, r, R)
 	if m == nil || len(m) == 0 {
-		api.argsErrorRender(w)
+		db.argsErrorRender(w)
 		return
 	}
-	err := api.Table(tableName).Update(m)
+	err := db.Table(tableName).Update(m)
 	if err != nil {
-		api.execErrorRender(w)
+		db.execErrorRender(w)
 		return
 	}
-	api.ExecSuccessRender(w)
+	db.ExecSuccessRender(w)
 	//	UPDATE task SET name = ? WHERE id = 3;
 	//	现在只支持根据ID进行更新
 	// id := m["id"]
 	// delete(m, "id")
-	// if api.tableColumns[tableName].HaveColumn("updated_at") {
+	// if db.tableColumns[tableName].HaveColumn("updated_at") {
 	// 	m["updated_at"] = time.Now().Format(TimeFormat)
 	// }
 	// ks, vs := ksvs(m, " = ? ")
 	// vs = append(vs, id)
-	// _, err := api.Exec(fmt.Sprintf("UPDATE `%s` SET %s WHERE %s = ?", tableName, strings.Join(ks, ","), "id"), vs...).RowsAffected()
+	// _, err := db.Exec(fmt.Sprintf("UPDATE `%s` SET %s WHERE %s = ?", tableName, strings.Join(ks, ","), "id"), vs...).RowsAffected()
 	// if err != nil {
-	// 	api.execErrorRender(w)
+	// 	db.execErrorRender(w)
 	// 	return
 	// }
 
 }
 
 // FormDelete 表单删除
-func (api *CRUD) FormDelete(v interface{}, w http.ResponseWriter, r *http.Request) {
+func (db *DataBase) FormDelete(v interface{}, w http.ResponseWriter, r *http.Request) {
 	tableName := getStructDBName(reflect.ValueOf(v))
 	m := parseRequest(v, r, R)
 	if m == nil || len(m) == 0 {
-		api.argsErrorRender(w)
+		db.argsErrorRender(w)
 		return
 	}
-	_, err := api.Table(tableName).Delete(m)
+	_, err := db.Table(tableName).Delete(m)
 	if err != nil {
-		api.execErrorRender(w)
+		db.execErrorRender(w)
 		return
 	}
-	api.ExecSuccessRender(w)
-	// if api.tableColumns[tableName].HaveColumn("is_deleted") {
-	// 	if api.tableColumns[tableName].HaveColumn("deleted_at") {
+	db.ExecSuccessRender(w)
+	// if db.tableColumns[tableName].HaveColumn("is_deleted") {
+	// 	if db.tableColumns[tableName].HaveColumn("deleted_at") {
 	// 		r.Form["deleted_at"] = []string{time.Now().Format(TimeFormat)}
 	// 	}
 	// 	r.Form["is_deleted"] = []string{"1"}
-	// 	api.Update(v, w, r)
+	// 	db.Update(v, w, r)
 	// 	return
 	// }
 	//	现在只支持根据ID进行删除
 	// ks, vs := ksvs(m, " = ? ")
-	// _, err := api.Exec(fmt.Sprintf("DELETE FROM %s WHERE %s ", tableName, strings.Join(ks, "AND")), vs...).RowsAffected()
+	// _, err := db.Exec(fmt.Sprintf("DELETE FROM %s WHERE %s ", tableName, strings.Join(ks, "AND")), vs...).RowsAffected()
 
 }
 
 // Find 将查找数据放到结构体里面
 // 如果不传条件则是查找所有人
 // Read Find Select
-func (api *CRUD) Find(obj interface{}, args ...interface{}) error {
+func (db *DataBase) Find(obj interface{}, args ...interface{}) error {
 	var (
 		v = reflect.ValueOf(obj)
 
@@ -579,7 +564,7 @@ func (api *CRUD) Find(obj interface{}, args ...interface{}) error {
 		if sql, ok := args[0].(string); ok {
 			if strings.Contains(sql, "SELECT") {
 				rawSqlflag = true
-				err := api.Query(sql, args[1:]...).Find(obj)
+				err := db.Query(sql, args[1:]...).Find(obj)
 				if err != nil {
 					return err
 				}
@@ -616,11 +601,11 @@ func (api *CRUD) Find(obj interface{}, args ...interface{}) error {
 			}
 		}
 
-		if api.tableColumns[tableName].HaveColumn("is_deleted") {
+		if db.tableColumns[tableName].HaveColumn("is_deleted") {
 			where += " AND is_deleted = 0"
 		}
 
-		err := api.Query(fmt.Sprintf("SELECT * FROM `%s` %s", tableName, where), args[1:]...).Find(obj)
+		err := db.Query(fmt.Sprintf("SELECT * FROM `%s` %s", tableName, where), args[1:]...).Find(obj)
 		if err != nil {
 			return err
 		}
@@ -637,7 +622,9 @@ func (api *CRUD) Find(obj interface{}, args ...interface{}) error {
 		}
 	case reflect.Struct:
 		afterFunc := v.MethodByName("AfterFind")
-		afterFunc.Call(nil)
+		if afterFunc.IsValid() {
+			afterFunc.Call(nil)
+		}
 	}
 
 	return nil
@@ -648,7 +635,7 @@ func (api *CRUD) Find(obj interface{}, args ...interface{}) error {
 	根据belong查询master
 	master是要查找的，belong是已知的。
 */
-func (api *CRUD) connection(target string, got reflect.Value) ([]interface{}, bool) {
+func (db *DataBase) connection(target string, got reflect.Value) ([]interface{}, bool) {
 	//"SELECT `master`.* FROM `master` WHERE `belong_id` = ? ", belongID
 	//"SELECT `master`.* FROM `master` LEFT JOIN `belong` ON `master`.id = `belong`.master_id WHERE `belong`.id = ?"
 	//"SELECT `master`.* FROM `master` LEFT JOIN `belong` ON `master`.belong_id = `belong`.id WHERE `belong`.id = ?"
@@ -661,19 +648,19 @@ func (api *CRUD) connection(target string, got reflect.Value) ([]interface{}, bo
 
 	//fmt.Println(ttn, gtn)
 
-	if api.tableColumns[gtn].HaveColumn(ttn + "_id") {
+	if db.tableColumns[gtn].HaveColumn(ttn + "_id") {
 		// got: question_option question_id
 		// target: question
 		// select * from question where id = question_option.question_id
-		//return api.RowSQL(fmt.Sprintf("SELECT `%s`.* FROM `%s` WHERE %s = ?", gtn, gtn, "id"), got.FieldByName(ttn+"_id").Interface())
+		//return db.RowSQL(fmt.Sprintf("SELECT `%s`.* FROM `%s` WHERE %s = ?", gtn, gtn, "id"), got.FieldByName(ttn+"_id").Interface())
 		return []interface{}{fmt.Sprintf("SELECT `%s`.* FROM `%s` WHERE %s = ?", gtn, gtn, "id"), got.FieldByName(ToStructName(ttn + "_id")).Interface()}, true
 	}
 
-	if api.tableColumns[ttn].HaveColumn(gtn + "_id") {
+	if db.tableColumns[ttn].HaveColumn(gtn + "_id") {
 		//got: question
 		//target:question_options
 		//select * from question_options where question.options.question_id = question.id
-		//		return api.RowSQL(fmt.Sprintf("SELECT * FROM `%s` WHERE %s = ?", ttn, gtn+"_id"), got.FieldByName("id").Interface())
+		//		return db.RowSQL(fmt.Sprintf("SELECT * FROM `%s` WHERE %s = ?", ttn, gtn+"_id"), got.FieldByName("id").Interface())
 		return []interface{}{fmt.Sprintf("SELECT * FROM `%s` WHERE %s = ?", ttn, gtn+"_id"), got.FieldByName("ID").Interface()}, true
 	}
 
@@ -683,17 +670,17 @@ func (api *CRUD) connection(target string, got reflect.Value) ([]interface{}, bo
 	//SELECT section.* FROM section LEFT JOIN group_section ON group_section.section_id = section.id WHERE group_section.group_id = group.id
 
 	ctn := ""
-	if api.haveTablename(ttn + "_" + gtn) {
+	if db.haveTablename(ttn + "_" + gtn) {
 		ctn = ttn + "_" + gtn
 	}
 
-	if api.haveTablename(gtn + "_" + ttn) {
+	if db.haveTablename(gtn + "_" + ttn) {
 		ctn = gtn + "_" + ttn
 	}
 
 	if ctn != "" {
-		if api.tableColumns[ctn].HaveColumn(gtn+"_id") && api.tableColumns[ctn].HaveColumn(ttn+"_id") {
-			//			return api.RowSQL(fmt.Sprintf("SELECT `%s`.* FROM `%s` LEFT JOIN %s ON %s.%s = %s.%s WHERE %s.%s = ?", ttn, ttn, ctn, ctn, ttn+"_id", ttn, "id", ctn, gtn+"_id"),
+		if db.tableColumns[ctn].HaveColumn(gtn+"_id") && db.tableColumns[ctn].HaveColumn(ttn+"_id") {
+			//			return db.RowSQL(fmt.Sprintf("SELECT `%s`.* FROM `%s` LEFT JOIN %s ON %s.%s = %s.%s WHERE %s.%s = ?", ttn, ttn, ctn, ctn, ttn+"_id", ttn, "id", ctn, gtn+"_id"),
 			//				got.FieldByName("id").Interface())
 			return []interface{}{fmt.Sprintf("SELECT `%s`.* FROM `%s` LEFT JOIN %s ON %s.%s = %s.%s WHERE %s.%s = ?", ttn, ttn, ctn, ctn, ttn+"_id", ttn, "id", ctn, gtn+"_id"),
 				got.FieldByName("ID").Interface()}, true
@@ -704,8 +691,10 @@ func (api *CRUD) connection(target string, got reflect.Value) ([]interface{}, bo
 }
 
 // FindAll 在需要的时候将自动查询结构体子结构体
-func (api *CRUD) FindAll(v interface{}, args ...interface{}) error {
-	api.Find(v, args...)
+func (db *DataBase) FindAll(v interface{}, args ...interface{}) error {
+	if err := db.Find(v, args...); err != nil {
+		return err
+	}
 	//首先查找字段，然后再查找结构体和Slice
 	/*
 		首先实现结构体
@@ -715,10 +704,10 @@ func (api *CRUD) FindAll(v interface{}, args ...interface{}) error {
 	rv := reflect.ValueOf(v).Elem()
 	switch rv.Kind() {
 	case reflect.Struct:
-		api.setStructField(rv)
+		db.setStructField(rv)
 	case reflect.Slice:
 		for i := 0; i < rv.Len(); i++ {
-			api.setStructField(rv.Index(i))
+			db.setStructField(rv.Index(i))
 		}
 	default:
 		return ErrNotSupportType
@@ -726,19 +715,18 @@ func (api *CRUD) FindAll(v interface{}, args ...interface{}) error {
 	return nil
 }
 
-func (api *CRUD) setStructField(rv reflect.Value) {
+func (db *DataBase) setStructField(rv reflect.Value) {
 	for i := 0; i < rv.NumField(); i++ {
 		if rv.Field(i).Kind() == reflect.Struct {
-			fmt.Println(ToDBName(rv.Field(i).Type().Name()))
-			con, ok := api.connection(ToDBName(rv.Field(i).Type().Name()), rv)
+			con, ok := db.connection(ToDBName(rv.Field(i).Type().Name()), rv)
 			if ok {
-				api.FindAll(rv.Field(i).Addr().Interface(), con...)
+				db.FindAll(rv.Field(i).Addr().Interface(), con...)
 			}
 		}
 		if rv.Field(i).Kind() == reflect.Slice {
-			con, ok := api.connection(ToDBName(rv.Field(i).Type().Elem().Name()), rv)
+			con, ok := db.connection(ToDBName(rv.Field(i).Type().Elem().Name()), rv)
 			if ok {
-				api.FindAll(rv.Field(i).Addr().Interface(), con...)
+				db.FindAll(rv.Field(i).Addr().Interface(), con...)
 			}
 		}
 	}

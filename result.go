@@ -314,7 +314,7 @@ func (r *SQLRows) Find(v interface{}) error {
 				elem := reflect.ValueOf(v).Elem()
 				for i := 0; i < elem.NumField(); i++ {
 					var dbn string
-					var field = elem.Elem().Type().Field(i)
+					var field = elem.Type().Field(i)
 					var tagName = field.Tag.Get("dbname")
 					if tagName != "" {
 						dbn = tagName

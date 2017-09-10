@@ -3,16 +3,43 @@ package crud
 import (
 	"reflect"
 	"strings"
-
-	"ekt.com/ekt/x/safemap"
+	"sync"
 )
 
 var (
 	fullTitles         = []string{"API", "CPU", "CSS", "CID", "DNS", "EOF", "GUID", "HTML", "HTTP", "HTTPS", "ID", "UID", "IP", "JSON", "QPS", "RAM", "RHS", "RPC", "SLA", "SMTP", "SSH", "TLS", "TTL", "UI", "UID", "UUID", "URI", "URL", "UTF8", "VM", "XML", "XSRF", "XSS", "PY"}
 	fullTitlesReplacer *strings.Replacer
 	//m和rm公用同一个
-	dbNameMap = safemap.NewMapStringString()
+	dbNameMap = NewMapStringString()
 )
+
+//SafeMapStringString 安全的map[string]string
+type SafeMapStringString struct {
+	m  map[string]string
+	mu sync.RWMutex
+}
+
+//Get Get
+func (safe *SafeMapStringString) Get(key string) (string, bool) {
+	safe.mu.RLock()
+	val, ok := safe.m[key]
+	safe.mu.RUnlock()
+	return val, ok
+}
+
+//Set Set
+func (safe *SafeMapStringString) Set(key, val string) {
+	safe.mu.Lock()
+	safe.m[key] = val
+	safe.mu.Unlock()
+}
+
+//NewMapStringString 返回一个安全的map[string]string
+func NewMapStringString() *SafeMapStringString {
+	safe := new(SafeMapStringString)
+	safe.m = make(map[string]string)
+	return safe
+}
 
 func init() {
 	var oldnew []string

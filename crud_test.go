@@ -3,30 +3,28 @@ package crud
 import (
 	"testing"
 	"time"
-
-	"github.com/jinzhu/gorm"
-	"github.com/mosesed/pluto/driver/mysql"
-
-	_ "github.com/go-sql-driver/mysql" //
+	// "github.com/jinzhu/gorm"
+	// "github.com/mosesed/pluto/driver/mysql"
+	// _ "github.com/go-sql-driver/mysql" //
 )
 
-type CreateBench struct {
-	ID   int
-	Name string
-}
+// type CreateBench struct {
+// 	ID   int
+// 	Name string
+// }
 
-var (
-	dataSourceName = "root:moss7!@tcp(127.0.0.1:3306)/demo?charset=utf8"
-	demoCRUD       = NewCRUD(dataSourceName)
-	demoMosesed    = mysql.NewGdo()
-	demoGORM, _    = gorm.Open("mysql", dataSourceName)
-)
+// var (
+// 	dataSourceName = "root:moss7!@tcp(127.0.0.1:3306)/demo?charset=utf8"
+// 	demoCRUD       = NewCRUD(dataSourceName)
+// 	demoMosesed    = mysql.NewGdo()
+// 	demoGORM, _    = gorm.Open("mysql", dataSourceName)
+// )
 
-func init() {
-	demoMosesed.Register("mysql", dataSourceName, false)
-	demoGORM.SingularTable(true)
+// func init() {
+// 	demoMosesed.Register("mysql", dataSourceName, false)
+// 	demoGORM.SingularTable(true)
 
-}
+// }
 
 // 任务
 type Task struct {
@@ -41,7 +39,7 @@ type Task struct {
 }
 
 func TestCRUDCreate(t *testing.T) {
-	demoCRUD.Create(&CreateBench{Name: "Y"})
+	//demoCRUD.Create(&CreateBench{Name: "Y"})
 }
 
 // func Benchmark_CRUDCreate(b *testing.B) {

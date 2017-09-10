@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Table 是对CRUD进一层的封装
 type Table struct {
-	*CRUD
+	*DataBase
+	*Search
 	tableName string
 }
 
@@ -24,21 +26,20 @@ func (t *Table) All() []map[string]string {
 }
 
 // Count 返回表有多少条数据
-func (t *Table) Count() (count int) {
-	t.Query("SELECT COUNT(*) FROM " + t.tableName).Scan(&count)
-	return
+func (t *Table) Count() int {
+	return t.Query("SELECT COUNT(*) FROM " + t.tableName).Int()
+
 }
 
 // UpdateTime 查找表的更新时间
-func (t *Table) UpdateTime() (updateTime string) {
-	t.Query("SELECT `UPDATE_TIME` FROM  INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA =(select database()) AND TABLE_NAME = '" + t.tableName + "';").Scan(&updateTime)
-	return
+func (t *Table) UpdateTime() string {
+	return t.Query("SELECT `UPDATE_TIME` FROM  INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA =(select database()) AND TABLE_NAME = '" + t.tableName + "';").String()
+
 }
 
 // AutoIncrement 查找表的自增ID的值
-func (t *Table) AutoIncrement() (id int) {
-	t.Query("SELECT `AUTO_INCREMENT` FROM  INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA =(select database()) AND TABLE_NAME = '" + t.tableName + "';").Scan(&id)
-	return
+func (t *Table) AutoIncrement() int {
+	return t.Query("SELECT `AUTO_INCREMENT` FROM  INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA =(select database()) AND TABLE_NAME = '" + t.tableName + "';").Int()
 }
 
 // SetAutoIncrement 设置自动增长ID
@@ -48,9 +49,9 @@ func (t *Table) SetAutoIncrement(id int) error {
 }
 
 // MaxID 查找表的最大ID，如果为NULL的话则为0
-func (t *Table) MaxID() (maxid int) {
-	t.Query("SELECT IFNULL(MAX(id), 0) as id FROM `" + t.tableName + "`").Scan(&maxid)
-	return
+func (t *Table) MaxID() int {
+	return t.Query("SELECT IFNULL(MAX(id), 0) as id FROM `" + t.tableName + "`").Int()
+
 }
 
 // IDIn 查找多个ID对应的列
@@ -63,6 +64,7 @@ func (t *Table) IDIn(ids ...interface{}) *SQLRows {
 
 // Create 创建
 // check 如果有，则会判断表里面以这几个字段为唯一的话，数据库是否存在此条数据，如果有就不插入了。
+// 所有ORM的底层。FormXXX， (*DataBase)CRUD
 //
 func (t *Table) Create(m map[string]interface{}, checks ...string) (int64, error) {
 	//INSERT INTO `feedback` (`task_id`, `template_question_id`, `question_options_id`, `suggestion`, `member_id`) VALUES ('1', '1', '1', '1', '1')
@@ -78,6 +80,9 @@ func (t *Table) Create(m map[string]interface{}, checks ...string) (int64, error
 			return 0, ErrInsertRepeat
 		}
 	}
+	if t.tableColumns[t.tableName].HaveColumn("created_at") {
+		m["created_at"] = time.Now().Format(TimeFormat)
+	}
 	ks, vs := ksvs(m)
 	id, err := t.Exec(fmt.Sprintf("INSERT INTO `%s` (%s) VALUES (%s)", t.tableName, strings.Join(ks, ","), argslice(len(ks))), vs...).LastInsertId()
 	if err != nil {
@@ -91,6 +96,9 @@ func (t *Table) Create(m map[string]interface{}, checks ...string) (int64, error
 
 //Reads 查找
 func (t *Table) Reads(m map[string]interface{}) []map[string]string {
+	if t.tableColumns[t.tableName].HaveColumn("is_deleted") {
+		m["is_deleted"] = 0
+	}
 	//SELECT * FROM address WHERE id = 1 AND uid = 27
 	ks, vs := ksvs(m, " = ? ")
 	return t.Query(fmt.Sprintf("SELECT * FROM %s WHERE %s", t.tableName, strings.Join(ks, "AND")), vs...).RowsMap()
@@ -109,6 +117,9 @@ func (t *Table) Read(m map[string]interface{}) map[string]string {
 func (t *Table) Update(m map[string]interface{}, keys ...string) error {
 	if len(keys) == 0 {
 		keys = append(keys, "id")
+	}
+	if t.tableColumns[t.tableName].HaveColumn("updated_at") {
+		m["updated_at"] = time.Now().Format(TimeFormat)
 	}
 	keysValue := []interface{}{}
 	whereks := []string{}
@@ -149,39 +160,49 @@ func (t *Table) CreateOrUpdate(m map[string]interface{}, keys ...string) error {
 // Delete 删除
 func (t *Table) Delete(m map[string]interface{}) (int64, error) {
 	ks, vs := ksvs(m, " = ? ")
+	if t.tableColumns[t.tableName].HaveColumn("is_deleted") {
+		return t.Exec(fmt.Sprintf("UPDATE `%s` SET is_deleted = '1', deleted_at = '%s' WHERE %s", t.tableName, time.Now().Format(TimeFormat), strings.Join(ks, "AND")), vs...).RowsAffected()
+	}
 	return t.Exec(fmt.Sprintf("DELETE FROM %s WHERE %s", t.tableName, strings.Join(ks, "AND")), vs...).RowsAffected()
 }
 
-//Clone 克隆
+// Clone 克隆
+// 克隆要保证状态在每个链式操作后都是独立的。
 func (t *Table) Clone() *Table {
-	newT := &Table{
-		CRUD:      t.CRUD,
+	newTable := &Table{
+		DataBase:  t.DataBase,
 		tableName: t.tableName,
 	}
-	if newT.Search == nil {
-		newT.Search = &Search{db: newT, tableName: t.tableName}
+	if t.Search == nil {
+		newTable.Search = &Search{table: newTable, tableName: t.tableName}
 	} else {
-		newT.Search = t.Search.Clone()
+		newTable.Search = t.Search.Clone()
+		newTable.Search.table = newTable
 	}
-	return newT
+	return newTable
 }
 
 //Where where
 func (t *Table) Where(query string, args ...interface{}) *Table {
-	return t.Clone().Search.Where(query, args...).db
+	return t.Clone().Search.Where(query, args...).table
 }
 
 //In In
 func (t *Table) In(field string, args ...interface{}) *Table {
-	return t.Clone().Search.In(field, args...).db
+	return t.Clone().Search.In(field, args...).table
 }
 
 //Joins joins
 func (t *Table) Joins(query string, args ...string) *Table {
-	return t.Clone().Search.Joins(query, args...).db
+	return t.Clone().Search.Joins(query, args...).table
+}
+
+//Limit limit
+func (t *Table) Limit(n interface{}) *Table {
+	return t.Clone().Search.Limit(n).table
 }
 
 //Fields fields
 func (t *Table) Fields(args ...string) *Table {
-	return t.Clone().Search.Fields(args...).db
+	return t.Clone().Search.Fields(args...).table
 }

@@ -33,7 +33,7 @@ type WhereCon struct {
 
 //Search 搜索结构体
 type Search struct {
-	db              *Table
+	table           *Table
 	fields          []string
 	tableName       string
 	joinConditions  JoinCons
@@ -63,12 +63,13 @@ func (s *Search) Fields(args ...string) *Search {
 
 //Where where语法
 func (s *Search) Where(query string, values ...interface{}) *Search {
-	id, err := strconv.Atoi(query)
-	if err != nil {
-		s.whereConditions = append(s.whereConditions, WhereCon{Query: query, Args: values})
-	} else {
-		s.whereConditions = append(s.whereConditions, WhereCon{Query: s.tableName + ".id = ?", Args: []interface{}{id}})
-	}
+	s.whereConditions = append(s.whereConditions, WhereCon{Query: query, Args: values})
+	return s
+}
+
+//WhereID id = ?
+func (s *Search) WhereID(id interface{}) *Search {
+	s.whereConditions = append(s.whereConditions, WhereCon{Query: s.tableName + ".id = ?", Args: []interface{}{id}})
 	return s
 }
 
@@ -87,13 +88,13 @@ func (s *Search) Joins(tablename string, condition ...string) *Search {
 	if len(condition) == 1 {
 		s.joinConditions = append(s.joinConditions, JoinCon{TableName: tablename, Condition: condition[0]})
 	} else {
-		if s.db.tableColumns[tablename].HaveColumn(s.tableName + "id") {
+		if s.table.tableColumns[tablename].HaveColumn(s.tableName + "id") {
 			s.joinConditions = append(s.joinConditions, JoinCon{TableName: tablename, Condition: fmt.Sprintf("%s.%s = %s.id", tablename, s.tableName+"id", s.tableName)})
-		} else if s.db.tableColumns[tablename].HaveColumn(s.tableName + "_id") {
+		} else if s.table.tableColumns[tablename].HaveColumn(s.tableName + "_id") {
 			s.joinConditions = append(s.joinConditions, JoinCon{TableName: tablename, Condition: fmt.Sprintf("%s.%s = %s.id", tablename, s.tableName+"_id", s.tableName)})
-		} else if s.db.tableColumns[s.tableName].HaveColumn(tablename + "id") {
+		} else if s.table.tableColumns[s.tableName].HaveColumn(tablename + "id") {
 			s.joinConditions = append(s.joinConditions, JoinCon{TableName: tablename, Condition: fmt.Sprintf("%s.%s = %s.id", s.tableName, tablename+"id", tablename)})
-		} else if s.db.tableColumns[s.tableName].HaveColumn(tablename + "_id") {
+		} else if s.table.tableColumns[s.tableName].HaveColumn(tablename + "_id") {
 			s.joinConditions = append(s.joinConditions, JoinCon{TableName: tablename, Condition: fmt.Sprintf("%s.%s = %s.id", s.tableName, tablename+"_id", tablename)})
 		}
 	}
@@ -238,25 +239,25 @@ func (s *Search) RawsMapInterface() RowsMapInterface {
 //RowMap RowMap
 func (s *Search) RowMap() RowMap {
 	query, args := s.Parse()
-	return s.db.Query(query, args...).RowMap()
+	return s.table.Query(query, args...).RowMap()
 }
 
 //RowsMap RowsMap
 func (s *Search) RowsMap() RowsMap {
 	query, args := s.Parse()
-	return s.db.Query(query, args...).RowsMap()
+	return s.table.Query(query, args...).RowsMap()
 }
 
 //RowsMapInterface RowsMapInterface
 func (s *Search) RowsMapInterface() RowsMapInterface {
 	query, args := s.Parse()
-	return s.db.Query(query, args...).RowsMapInterface()
+	return s.table.Query(query, args...).RowsMapInterface()
 }
 
 //DoubleSlice DoubleSlice
 func (s *Search) DoubleSlice() (map[string]int, [][]string) {
 	query, args := s.Parse()
-	return s.db.Query(query, args...).DoubleSlice()
+	return s.table.Query(query, args...).DoubleSlice()
 }
 
 //Int 如果指定字段，则返回指定字段的int值，否则返回第一个字段作为int值返回。
@@ -287,10 +288,10 @@ func (s *Search) String(args ...string) string {
 	return ""
 }
 
-//Struct 将查询的结构放入到结构体当中
-func (s *Search) Struct(v interface{}) {
+//Finds 将查询的结构放入到结构体当中
+func (s *Search) Finds(v interface{}) {
 	query, args := s.Parse()
-	s.db.FindAll(v, append([]interface{}{query}, args...)...)
+	s.table.FindAll(v, append([]interface{}{query}, args...)...)
 }
 
 //Count 计算这次查询结果的个数
@@ -298,6 +299,6 @@ func (s *Search) Count() int {
 	var count int
 	s.fields = []string{"COUNT(*)"}
 	query, args := s.Parse()
-	s.db.Query(query, args...).Find(&count)
+	s.table.Query(query, args...).Find(&count)
 	return count
 }

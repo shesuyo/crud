@@ -1,6 +1,7 @@
 package crud
 
 import (
+	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
@@ -118,8 +119,10 @@ func getStructDBName(v reflect.Value) string {
 	// 如果有DBName这个方法就调用这个获取表名，如果没有的话就通过toDBName获取表名
 	dbNameFunc := v.MethodByName(DBName)
 	if dbNameFunc.IsValid() {
+		fmt.Println("is Valid")
 		dbName = dbNameFunc.Call(nil)[0].String()
 	} else {
+		fmt.Println("NOT VALID")
 		dbName = ToDBName(v.Type().Name())
 	}
 	return dbName
