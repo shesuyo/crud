@@ -173,8 +173,27 @@ type (
 	RowMapInterface map[string]interface{}
 )
 
+//HaveID 是否有这个ID
+func (rm RowsMap) HaveID(id string) bool {
+	for _, v := range rm {
+		if v["id"] == id {
+			return true
+		}
+	}
+	return false
+}
+
 //Pluck 取出中间的一列
-func (rm RowsMap) Pluck(key string) []string {
+func (rm RowsMap) Pluck(key string) []interface{} {
+	var vs []interface{}
+	for _, v := range rm {
+		vs = append(vs, v[key])
+	}
+	return vs
+}
+
+//PluckString 取出中间的一列
+func (rm RowsMap) PluckString(key string) []string {
 	var vs []string
 	for _, v := range rm {
 		vs = append(vs, v[key])

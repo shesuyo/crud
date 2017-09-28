@@ -25,11 +25,11 @@ func (t *Table) All() []map[string]string {
 	return t.Query("SELECT * FROM " + t.tableName).RowsMap()
 }
 
-// Count 返回表有多少条数据
-func (t *Table) Count() int {
-	return t.Query("SELECT COUNT(*) FROM " + t.tableName).Int()
+// // Count 返回表有多少条数据
+// func (t *Table) Count() int {
+// 	return t.Query("SELECT COUNT(*) FROM " + t.tableName).Int()
 
-}
+// }
 
 // UpdateTime 查找表的更新时间
 func (t *Table) UpdateTime() string {
@@ -185,6 +185,31 @@ func (t *Table) Clone() *Table {
 //Where where
 func (t *Table) Where(query string, args ...interface{}) *Table {
 	return t.Clone().Search.Where(query, args...).table
+}
+
+//WhereToday 查看今天的。
+func (t *Table) WhereToday(field string) *Table {
+	return t.Clone().Search.Where("DATE_FORMAT("+field+",'%Y-%m-%d') = ?", time.Now().Format("2006-01-02")).table
+}
+
+//WhereDay 这个字段等于这个时间
+func (t *Table) WhereDay(field, time string) *Table {
+	return t.Clone().Search.Where("DATE_FORMAT("+field+",'%Y-%m-%d') = ?", time).table
+}
+
+//WhereMonth 这个字段等于这个时间
+func (t *Table) WhereMonth(field, time string) *Table {
+	return t.Clone().Search.Where("DATE_FORMAT("+field+",'%Y-%m') = ?", time).table
+}
+
+//WhereBeforeToday 小于今天的时间
+func (t *Table) WhereBeforeToday(field string) *Table {
+	return t.Clone().Search.Where("DATE_FORMAT("+field+",'%Y-%m-%d') < ?", time.Now().Format("2006-01-02")).table
+}
+
+//WhereID id = ?
+func (t *Table) WhereID(id interface{}) *Table {
+	return t.Clone().Search.WhereID(id).table
 }
 
 //In In
