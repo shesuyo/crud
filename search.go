@@ -173,7 +173,7 @@ func (s *Search) Parse() (string, []interface{}) {
 		offset = " OFFSET ?"
 		s.args = append(s.args, s.offset)
 	}
-	s.query = fmt.Sprintf("SELECT %s FROM %s%s%s%s%s%s", fields, s.tableName, joins, paddingwhere, strings.Join(wheres, " AND "), limit, offset)
+	s.query = fmt.Sprintf("SELECT %s FROM `%s`%s%s%s%s%s", fields, s.tableName, joins, paddingwhere, strings.Join(wheres, " AND "), limit, offset)
 	s.raw = true
 	return s.query, s.args
 }
