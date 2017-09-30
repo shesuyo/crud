@@ -204,14 +204,23 @@ func (s *Search) warpField(field string) (warpStr string, tablename string, fiel
 }
 
 func (s *Search) warpFieldSingel(field string) (warpStr string, tablename string, fieldname string) {
+
 	if strings.Contains(field, ".") {
 		sp := strings.Split(field, ".")
 		tablename = sp[0]
 		fieldname = sp[1]
+		if strings.Contains(field, "`") {
+			warpStr = field
+			return
+		}
 		warpStr = strings.Replace(field, ".", ".`", 1) + "`"
 	} else {
 		tablename = s.tableName
 		fieldname = field
+		if strings.Contains(field, "`") {
+			warpStr = field
+			return
+		}
 		switch field {
 		case "*", "COUNT(*)":
 			warpStr = field

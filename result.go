@@ -173,6 +173,33 @@ type (
 	RowMapInterface map[string]interface{}
 )
 
+//EachAddTableString 根据一个字段查找
+//https://github.com/shesuyo/crud/issues/11
+//第一个是原来的，第二个是新的。
+func (rm *RowsMap) EachAddTableString(table *Table, args ...string) {
+	argsLen := len(args)
+	if argsLen < 4 || argsLen%2 != 0 {
+		return
+	}
+	fiels := []string{args[1]}
+	for i := 2; i < argsLen; i += 2 {
+		fiels = append(fiels, args[i])
+	}
+	datas := table.Fields(fiels...).In(args[1], rm.Pluck(args[0])...).RowsMap()
+	rmLen := len(*rm)
+	datasLen := len(datas)
+	for i := 0; i < rmLen; i++ {
+		for j := 0; j < datasLen; j++ {
+			if (*rm)[i][args[0]] == datas[j][args[1]] {
+				for k := 2; k < argsLen; k += 2 {
+					(*rm)[i][args[k+1]] = datas[j][args[k]]
+				}
+				break
+			}
+		}
+	}
+}
+
 //HaveID 是否有这个ID
 func (rm RowsMap) HaveID(id string) bool {
 	for _, v := range rm {

@@ -207,6 +207,14 @@ func (t *Table) WhereBeforeToday(field string) *Table {
 	return t.Clone().Search.Where("DATE_FORMAT("+field+",'%Y-%m-%d') < ?", time.Now().Format("2006-01-02")).table
 }
 
+//WhereLike field LIKE %like%
+func (t *Table) WhereLike(field, like string) *Table {
+	if like == "" {
+		return t
+	}
+	return t.Clone().Search.Where(field+" LIKE ?", "%"+like+"%").table
+}
+
 //WhereID id = ?
 func (t *Table) WhereID(id interface{}) *Table {
 	return t.Clone().Search.WhereID(id).table
