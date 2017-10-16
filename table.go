@@ -187,6 +187,39 @@ func (t *Table) Where(query string, args ...interface{}) *Table {
 	return t.Clone().Search.Where(query, args...).table
 }
 
+//WhereStartEndDay 2017-07-07
+func (t *Table) WhereStartEndDay(field, startDay, endDay string) *Table {
+	if startDay == "" && endDay == "" {
+		return t
+	}
+	if startDay != "" && endDay == "" {
+		endDay = startDay
+	}
+	return t.Clone().Search.Where("DATE_FORMAT("+field+",'%Y-%m-%d') >= ? AND DATE_FORMAT("+field+",'%Y-%m-%d') <= ?", startDay, endDay).table
+}
+
+//WhereStartEndMonth 2007-01
+func (t *Table) WhereStartEndMonth(field, startMonth, endMonth string) *Table {
+	if startMonth == "" && endMonth == "" {
+		return t
+	}
+	if startMonth != "" && endMonth == "" {
+		endMonth = startMonth
+	}
+	return t.Clone().Search.Where("DATE_FORMAT("+field+",'%Y-%m') >= ? AND DATE_FORMAT("+field+",'%Y-%m') <= ?", startMonth, endMonth).table
+}
+
+//WhereStartEndTime 00:00
+func (t *Table) WhereStartEndTime(field, startTime, endTime string) *Table {
+	if startTime == "" && endTime == "" {
+		return t
+	}
+	if startTime != "" && endTime == "" {
+		endTime = startTime
+	}
+	return t.Clone().Search.Where("DATE_FORMAT("+field+",'%H:%i') >= ? AND DATE_FORMAT("+field+",'%H:%i') <= ?", startTime, endTime).table
+}
+
 //WhereToday 查看今天的。
 func (t *Table) WhereToday(field string) *Table {
 	return t.Clone().Search.Where("DATE_FORMAT("+field+",'%Y-%m-%d') = ?", time.Now().Format("2006-01-02")).table
@@ -228,6 +261,11 @@ func (t *Table) In(field string, args ...interface{}) *Table {
 //Joins joins
 func (t *Table) Joins(query string, args ...string) *Table {
 	return t.Clone().Search.Joins(query, args...).table
+}
+
+//OrderBy OrderBy
+func (t *Table) OrderBy(field string, isDESC ...bool) *Table {
+	return t.Clone().Search.OrderBy(field, isDESC...).table
 }
 
 //Limit limit

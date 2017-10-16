@@ -33,16 +33,17 @@ type WhereCon struct {
 
 //Search 搜索结构体
 type Search struct {
-	table           *Table
-	fields          []string
-	tableName       string
-	joinConditions  JoinCons
-	whereConditions []WhereCon
-	group           string
-	with            string
-	having          string
-	limit           interface{}
-	offset          interface{}
+	table             *Table
+	fields            []string
+	tableName         string
+	joinConditions    JoinCons
+	whereConditions   []WhereCon
+	orderbyConditions []string
+	group             string
+	with              string
+	having            string
+	limit             interface{}
+	offset            interface{}
 
 	query string
 	args  []interface{}
@@ -101,6 +102,16 @@ func (s *Search) Joins(tablename string, condition ...string) *Search {
 	return s
 }
 
+//OrderBy OrderBy
+func (s *Search) OrderBy(field string, isDESC ...bool) *Search {
+	if len(isDESC) > 0 && isDESC[0] {
+		s.orderbyConditions = append(s.orderbyConditions, field+" DESC")
+	} else {
+		s.orderbyConditions = append(s.orderbyConditions, field+" ASC")
+	}
+	return s
+}
+
 //TableName tableName
 func (s *Search) TableName(name string) *Search {
 	s.tableName = name
@@ -135,6 +146,7 @@ func (s *Search) Parse() (string, []interface{}) {
 		joins        string
 		paddingwhere string
 		wheres       []string
+		orderby      string
 		limit        string
 		offset       string
 	)
@@ -165,6 +177,9 @@ func (s *Search) Parse() (string, []interface{}) {
 		wheres = append(wheres, wherecon.Query)
 		s.args = append(s.args, wherecon.Args...)
 	}
+	if len(s.orderbyConditions) > 0 {
+		orderby = " ORDER BY " + strings.Join(s.orderbyConditions, ",")
+	}
 	if s.limit != nil {
 		limit = " LIMIT ?"
 		s.args = append(s.args, s.limit)
@@ -173,7 +188,7 @@ func (s *Search) Parse() (string, []interface{}) {
 		offset = " OFFSET ?"
 		s.args = append(s.args, s.offset)
 	}
-	s.query = fmt.Sprintf("SELECT %s FROM `%s`%s%s%s%s%s", fields, s.tableName, joins, paddingwhere, strings.Join(wheres, " AND "), limit, offset)
+	s.query = fmt.Sprintf("SELECT %s FROM `%s`%s%s%s%s%s%s", fields, s.tableName, joins, paddingwhere, strings.Join(wheres, " AND "), orderby, limit, offset)
 	s.raw = true
 	return s.query, s.args
 }
