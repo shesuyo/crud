@@ -269,6 +269,12 @@ func (s *Search) RowMap() RowMap {
 	return s.table.Query(query, args...).RowMap()
 }
 
+//SQLRows SQLRows
+func (s *Search) SQLRows() *SQLRows {
+	query, args := s.Parse()
+	return s.table.Query(query, args...)
+}
+
 //RowsMap RowsMap
 func (s *Search) RowsMap() RowsMap {
 	query, args := s.Parse()
