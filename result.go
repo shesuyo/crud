@@ -216,7 +216,13 @@ func (rm RowMap) CID() string {
 	return cid
 }
 
-//UID return uid
+//CIDInt return cid int值
+func (rm RowMap) CIDInt() int {
+	cid, _ := strconv.Atoi(rm.CID())
+	return cid
+}
+
+//UID return uid int value
 func (rm RowMap) UID() string {
 	var uid string
 	var ok bool
@@ -225,6 +231,12 @@ func (rm RowMap) UID() string {
 			return uid
 		}
 	}
+	return uid
+}
+
+//UIDInt return uid int value
+func (rm RowMap) UIDInt() int {
+	uid, _ := strconv.Atoi(rm.UID())
 	return uid
 }
 
