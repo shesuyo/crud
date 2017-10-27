@@ -107,7 +107,7 @@ func (r *SQLRows) RowMapInterface() RowMapInterface {
 	这里有浪费tinyint->int8[-128,127] unsigned tinyint uint8[0,255]，这里直接用int16[-32768,32767]
 */
 func (r *SQLRows) RowsMapInterface() RowsMapInterface {
-	rs := []map[string]interface{}{}
+	rs := []RowMapInterface{}
 	if r.err != nil {
 		return rs
 	}
@@ -164,14 +164,89 @@ func (r *SQLRows) RowsMapInterface() RowsMapInterface {
 
 type (
 	//RowsMap 多行
-	RowsMap []map[string]string
+	RowsMap []RowMap
 	//RowMap 单行
 	RowMap map[string]string
 	//RowsMapInterface 多行
-	RowsMapInterface []map[string]interface{}
+	RowsMapInterface []RowMapInterface
 	//RowMapInterface 单行
 	RowMapInterface map[string]interface{}
 )
+
+//Interface conver RowMap to RowMapInterface
+func (rm RowMap) Interface() RowMapInterface {
+	rmi := RowMapInterface{}
+	for k, v := range rm {
+		rmi[k] = v
+	}
+	return rmi
+}
+
+//HaveRecord return it's have record
+func (rm RowMap) HaveRecord() bool {
+	if len(rm) > 0 {
+		return true
+	}
+	return false
+}
+
+//NotFound return it's not found
+func (rm RowMap) NotFound() bool {
+	if len(rm) == 0 {
+		return true
+	}
+	return false
+}
+
+//CIDFields cid可能的字段
+var CIDFields = [...]string{"categoryid", "cid", "hospital_id"}
+
+//UIDFields uid可能的字段
+var UIDFields = [...]string{"uid"}
+
+//CID return cid
+func (rm RowMap) CID() string {
+	var cid string
+	var ok bool
+	for _, field := range CIDFields {
+		if cid, ok = rm[field]; ok {
+			return cid
+		}
+	}
+	return cid
+}
+
+//UID return uid
+func (rm RowMap) UID() string {
+	var uid string
+	var ok bool
+	for _, field := range CIDFields {
+		if uid, ok = rm[field]; ok {
+			return uid
+		}
+	}
+	return uid
+}
+
+//Int return int field
+func (rm RowMap) Int(field string, def ...int) int {
+	val, err := strconv.Atoi(rm[field])
+	if err != nil {
+		if len(def) > 0 {
+			return def[0]
+		}
+	}
+	return val
+}
+
+//Interface conver RowsMap to RowsMapInterface
+func (rm RowsMap) Interface() RowsMapInterface {
+	rmi := RowsMapInterface{}
+	for _, v := range rm {
+		rmi = append(rmi, v.Interface())
+	}
+	return rmi
+}
 
 //EachAddTableString 根据一个字段查找
 //https://github.com/shesuyo/crud/issues/11
@@ -230,7 +305,7 @@ func (rm RowsMap) PluckString(key string) []string {
 
 // RowsMap []map[string]string 所有类型都将返回字符串类型
 func (r *SQLRows) RowsMap() RowsMap {
-	rs := make([]map[string]string, 0) //为了JSON输出的时候为[]
+	rs := make([]RowMap, 0) //为了JSON输出的时候为[]
 	//rs := []map[string]string{} //这样在JSON输出的时候是null
 
 	//panic: runtime error: invalid memory address or nil pointer dereference
@@ -412,7 +487,7 @@ func (r *SQLRows) Scan(v interface{}) error {
 }
 
 func queryRows(rows *sql.Rows) RowsMap {
-	var result = make([]map[string]string, 0)
+	var result = make([]RowMap, 0)
 	for rows.Next() {
 		result = append(result, scanRows(rows))
 	}

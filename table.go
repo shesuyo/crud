@@ -21,7 +21,7 @@ func (t *Table) Name() string {
 }
 
 // All 返回这张表所有数据
-func (t *Table) All() []map[string]string {
+func (t *Table) All() RowsMap {
 	return t.Query("SELECT * FROM " + t.tableName).RowsMap()
 }
 
@@ -95,7 +95,7 @@ func (t *Table) Create(m map[string]interface{}, checks ...string) (int64, error
 }
 
 //Reads 查找
-func (t *Table) Reads(m map[string]interface{}) []map[string]string {
+func (t *Table) Reads(m map[string]interface{}) RowsMap {
 	if t.tableColumns[t.tableName].HaveColumn(IsDeleted) {
 		m[IsDeleted] = 0
 	}
