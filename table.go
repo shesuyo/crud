@@ -187,6 +187,14 @@ func (t *Table) Where(query string, args ...interface{}) *Table {
 	return t.Clone().Search.Where(query, args...).table
 }
 
+//WhereNotEmpty 不允许空的
+func (t *Table) WhereNotEmpty(query, arg string) *Table {
+	if arg == "" {
+		return t
+	}
+	return t.Clone().Search.Where(query, arg).table
+}
+
 //WhereStartEndDay 2017-07-07
 func (t *Table) WhereStartEndDay(field, startDay, endDay string) *Table {
 	if startDay == "" && endDay == "" {
