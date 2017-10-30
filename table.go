@@ -256,6 +256,11 @@ func (t *Table) WhereLike(field, like string) *Table {
 	return t.Clone().Search.Where(field+" LIKE ?", "%"+like+"%").table
 }
 
+//WhereLikeLeft field LIKE %like
+func (t *Table) WhereLikeLeft(field, like string) *Table {
+	return t.Clone().Search.Where(field+" LIKE ?", "%"+like).table
+}
+
 //WhereID id = ?
 func (t *Table) WhereID(id interface{}) *Table {
 	return t.Clone().Search.WhereID(id).table

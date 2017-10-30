@@ -204,6 +204,9 @@ var CIDFields = [...]string{"categoryid", "cid", "hospital_id"}
 //UIDFields uid可能的字段
 var UIDFields = [...]string{"uid"}
 
+//NameFields name可能的字段
+var NameFields = [...]string{"name", "nickname", "title"}
+
 //CID return cid
 func (rm RowMap) CID() string {
 	var cid string
@@ -216,13 +219,35 @@ func (rm RowMap) CID() string {
 	return cid
 }
 
+//ID return id
+func (rm RowMap) ID() string {
+	return rm["id"]
+}
+
+//IDInt return id type int
+func (rm RowMap) IDInt() int {
+	return rm.Int("id")
+}
+
 //CIDInt return cid int值
 func (rm RowMap) CIDInt() int {
 	cid, _ := strconv.Atoi(rm.CID())
 	return cid
 }
 
-//UID return uid int value
+//Name return name type string
+func (rm RowMap) Name() string {
+	var name string
+	var ok bool
+	for _, field := range NameFields {
+		if name, ok = rm[field]; ok {
+			return name
+		}
+	}
+	return name
+}
+
+//UID return uid type string
 func (rm RowMap) UID() string {
 	var uid string
 	var ok bool
@@ -234,7 +259,7 @@ func (rm RowMap) UID() string {
 	return uid
 }
 
-//UIDInt return uid int value
+//UIDInt return uid type int
 func (rm RowMap) UIDInt() int {
 	uid, _ := strconv.Atoi(rm.UID())
 	return uid
@@ -251,6 +276,15 @@ func (rm RowMap) Int(field string, def ...int) int {
 	return val
 }
 
+//String return map[string]string
+func (rm RowsMap) String() []map[string]string {
+	ms := []map[string]string{}
+	for _, r := range rm {
+		ms = append(ms, map[string]string(r))
+	}
+	return ms
+}
+
 //Interface conver RowsMap to RowsMapInterface
 func (rm RowsMap) Interface() RowsMapInterface {
 	rmi := RowsMapInterface{}
@@ -258,6 +292,17 @@ func (rm RowsMap) Interface() RowsMapInterface {
 		rmi = append(rmi, v.Interface())
 	}
 	return rmi
+}
+
+//Filter 过滤指定字段
+func (rm RowsMap) Filter(field, equal string) RowsMap {
+	frm := RowsMap{}
+	for _, v := range rm {
+		if v[field] == equal {
+			frm = append(frm, v)
+		}
+	}
+	return frm
 }
 
 //EachAddTableString 根据一个字段查找
@@ -311,6 +356,16 @@ func (rm RowsMap) PluckString(key string) []string {
 	var vs []string
 	for _, v := range rm {
 		vs = append(vs, v[key])
+	}
+	return vs
+}
+
+//PluckInt 取出中间的一列
+func (rm RowsMap) PluckInt(key string) []int {
+	var vs []int
+	for _, v := range rm {
+		val, _ := strconv.Atoi(v[key])
+		vs = append(vs, val)
 	}
 	return vs
 }
