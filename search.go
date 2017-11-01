@@ -189,7 +189,8 @@ func (s *Search) Parse() (string, []interface{}) {
 		s.args = append(s.args, s.offset)
 	}
 	s.query = fmt.Sprintf("SELECT %s FROM `%s`%s%s%s%s%s%s", fields, s.tableName, joins, paddingwhere, strings.Join(wheres, " AND "), orderby, limit, offset)
-	s.raw = true
+	// 如果table进行搜索了(table.RowsMap())，那么table下面所有的条件都会一直使用之前的搜索语句。
+	// s.raw = true
 	return s.query, s.args
 }
 
@@ -226,6 +227,9 @@ func (s *Search) warpFieldSingel(field string) (warpStr string, tablename string
 		fieldname = sp[1]
 		if strings.Contains(field, "`") {
 			warpStr = field
+			return
+		} else if fieldname == "*" {
+			warpStr = "*"
 			return
 		}
 		warpStr = strings.Replace(field, ".", ".`", 1) + "`"
