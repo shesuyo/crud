@@ -251,7 +251,7 @@ func (rm RowMap) Name() string {
 func (rm RowMap) UID() string {
 	var uid string
 	var ok bool
-	for _, field := range CIDFields {
+	for _, field := range UIDFields {
 		if uid, ok = rm[field]; ok {
 			return uid
 		}
