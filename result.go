@@ -305,6 +305,17 @@ func (rm RowsMap) Filter(field, equal string) RowsMap {
 	return frm
 }
 
+//FilterFunc fileter by func (like jq)
+func (rm RowsMap) FilterFunc(f func(RowMap) bool) RowsMap {
+	frm := RowsMap{}
+	for _, v := range rm {
+		if f(v) {
+			frm = append(frm, v)
+		}
+	}
+	return frm
+}
+
 //EachAddTableString 根据一个字段查找
 //https://github.com/shesuyo/crud/issues/11
 //第一个是原来的，第二个是新的。
