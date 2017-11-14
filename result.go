@@ -173,6 +173,15 @@ type (
 	RowMapInterface map[string]interface{}
 )
 
+//FieldDefault get field if not reture the def value
+func (rm RowMap) FieldDefault(field, def string) string {
+	val, ok := rm[field]
+	if !ok {
+		val = def
+	}
+	return val
+}
+
 //Interface conver RowMap to RowMapInterface
 func (rm RowMap) Interface() RowMapInterface {
 	rmi := RowMapInterface{}
