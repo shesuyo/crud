@@ -190,6 +190,7 @@ func (rm RowMap) Bool(field ...string) bool {
 		}
 		return false
 	}
+	return false
 }
 
 //FieldDefault get field if not reture the def value
