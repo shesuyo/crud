@@ -335,6 +335,12 @@ func (s *Search) String(args ...string) string {
 	return ""
 }
 
+//Bool Bool
+func (s *Search) Bool(args ...string) bool {
+	row := s.RowMap()
+	return row.Bool(args...)
+}
+
 //Finds 将查询的结构放入到结构体当中
 func (s *Search) Finds(v interface{}) {
 	query, args := s.Parse()

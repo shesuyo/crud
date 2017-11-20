@@ -173,6 +173,25 @@ type (
 	RowMapInterface map[string]interface{}
 )
 
+//Bool return singel bool
+func (rm RowMap) Bool(field ...string) bool {
+	if rm.NotFound() {
+		return false
+	}
+	if len(field) > 0 {
+		if rm[field[0]] == "1" {
+			return true
+		}
+		return false
+	}
+	for _, v := range rm {
+		if v == "1" {
+			return true
+		}
+		return false
+	}
+}
+
 //FieldDefault get field if not reture the def value
 func (rm RowMap) FieldDefault(field, def string) string {
 	val, ok := rm[field]
