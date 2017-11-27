@@ -372,11 +372,22 @@ func (rm *RowsMap) EachAddTableString(table *Table, args ...string) {
 	}
 }
 
-func (rm *RowsMap) EachMod(f func(r RowMap)) {
-	l := len((*rm))
+// EachMod mod each rowmap
+func (rm RowsMap) EachMod(f func(RowMap)) RowsMap {
+	l := len(rm)
 	for i := 0; i < l; i++ {
-		f((*rm)[i])
+		f(rm[i])
 	}
+	return rm
+}
+
+// GroupByField group by field
+func (rm RowsMap) GroupByField(field string) map[string][]RowMap {
+	gm := map[string][]RowMap{}
+	for _, v := range rm {
+		gm[v[field]] = append(gm[v[field]], v)
+	}
+	return gm
 }
 
 //HaveID 是否有这个ID
