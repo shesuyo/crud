@@ -372,6 +372,13 @@ func (rm *RowsMap) EachAddTableString(table *Table, args ...string) {
 	}
 }
 
+func (rm *RowsMap) EachMod(f func(r RowMap)) {
+	l := len((*rm))
+	for i := 0; i < l; i++ {
+		f((*rm)[i])
+	}
+}
+
 //HaveID 是否有这个ID
 func (rm RowsMap) HaveID(id string) bool {
 	for _, v := range rm {
