@@ -390,6 +390,48 @@ func (rm RowsMap) GroupByField(field string) map[string][]RowMap {
 	return gm
 }
 
+// RowsWrap WarpByField
+type RowsWrap struct {
+	Key string   `json:"key"`
+	Val []RowMap `json:"val"`
+}
+
+// RowsWraps []RowsWrap
+type RowsWraps []RowsWrap
+
+// HaveKey return weather have this key
+func (rw RowsWraps) HaveKey(key string) bool {
+	for _, v := range rw {
+		if v.Key == key {
+			return true
+		}
+	}
+	return false
+}
+
+// Set auto judge & set key
+func (rw *RowsWraps) Set(key string, val RowMap) {
+	if rw.HaveKey(key) {
+		l := len(*rw)
+		for i := 0; i < l; i++ {
+			if (*rw)[i].Key == key {
+				(*rw)[i].Val = append((*rw)[i].Val, val)
+			}
+		}
+	} else {
+		(*rw) = append((*rw), RowsWrap{Key: key, Val: []RowMap{val}})
+	}
+}
+
+// WarpByField WarpByField
+func (rm RowsMap) WarpByField(field string) RowsWraps {
+	rw := RowsWraps{}
+	for _, v := range rm {
+		rw.Set(v[field], v)
+	}
+	return rw
+}
+
 //HaveID 是否有这个ID
 func (rm RowsMap) HaveID(id string) bool {
 	for _, v := range rm {
