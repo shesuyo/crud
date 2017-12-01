@@ -94,6 +94,11 @@ func (t *Table) Create(m map[string]interface{}, checks ...string) (int64, error
 	return id, nil
 }
 
+// CreateBatch create batch
+// func (t *Table) CreateBatch(ms []map[string]interface{}) (int, error) {
+
+// }
+
 //Reads 查找
 func (t *Table) Reads(m map[string]interface{}) RowsMap {
 	if t.tableColumns[t.tableName].HaveColumn(IsDeleted) {
