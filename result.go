@@ -296,13 +296,32 @@ func (rm RowMap) UIDInt() int {
 
 //Int return int field
 func (rm RowMap) Int(field string, def ...int) int {
-	val, err := strconv.Atoi(rm[field])
-	if err != nil {
-		if len(def) > 0 {
-			return def[0]
+	val, ok := rm[field]
+	if ok {
+		i, err := strconv.Atoi(val)
+		if err == nil {
+			return i
 		}
 	}
-	return val
+	if len(def) > 0 {
+		return def[0]
+	}
+	return 0
+}
+
+// Float64 return float64
+func (rm RowMap) Float64(field string, def ...float64) float64 {
+	val, ok := rm[field]
+	if ok {
+		f, err := strconv.ParseFloat(val, 64)
+		if err == nil {
+			return f
+		}
+	}
+	if len(def) > 0 {
+		return def[0]
+	}
+	return 0
 }
 
 //String return map[string]string

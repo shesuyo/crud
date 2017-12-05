@@ -76,7 +76,7 @@ func (t *Table) Create(m map[string]interface{}, checks ...string) (int64, error
 			values = append(values, m[check])
 		}
 		// SELECT COUNT(*) FROM `feedback` WHERE `task_id` = ? AND `member_id` = ?
-		if t.Query(fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s", t.tableName, strings.Join(names, "AND")), values...).Int() > 0 {
+		if t.Query(fmt.Sprintf("SELECT COUNT(*) FROM `%s` WHERE %s", t.tableName, strings.Join(names, "AND ")), values...).Int() > 0 {
 			return 0, ErrInsertRepeat
 		}
 	}
