@@ -22,15 +22,8 @@ AfterUpdate
 AfterFind
 BeforeDelete
 AfterDelete
-
-
 PLAN:
 支持多数据库
 支持分表分库
-
-
-
-状态
-
 */
 package crud

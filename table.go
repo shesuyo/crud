@@ -95,9 +95,9 @@ func (t *Table) Create(m map[string]interface{}, checks ...string) (int64, error
 }
 
 // CreateBatch create batch
-// func (t *Table) CreateBatch(ms []map[string]interface{}) (int, error) {
-
-// }
+func (t *Table) CreateBatch(ms []map[string]interface{}) (int, error) {
+	return 0, nil
+}
 
 //Reads 查找
 func (t *Table) Reads(m map[string]interface{}) RowsMap {
@@ -187,12 +187,12 @@ func (t *Table) Clone() *Table {
 	return newTable
 }
 
-//Where where
+// Where field = arg
 func (t *Table) Where(query string, args ...interface{}) *Table {
 	return t.Clone().Search.Where(query, args...).table
 }
 
-//WhereNotEmpty 不允许空的
+// WhereNotEmpty if arg empty,will do nothing
 func (t *Table) WhereNotEmpty(query, arg string) *Table {
 	if arg == "" {
 		return t
@@ -200,7 +200,13 @@ func (t *Table) WhereNotEmpty(query, arg string) *Table {
 	return t.Clone().Search.Where(query, arg).table
 }
 
-//WhereStartEndDay 2017-07-07
+// WhereStartEndDay DATE_FORMAT(field, '%Y-%m-%d') >= startTime AND DATE_FORMAT(field, '%Y-%m-%d') <= endTime
+// if startDay == "", will do nothing
+// if endDay == "", endDay = startDay
+// '','' => return
+// '2017-07-01', '' => '2017-07-01', '2017-07-01'
+// '', '2017-07-02' => '','2017-07-02' (TODO)
+// '2017-07-01','2017-07-02' => '2017-07-02','2017-07-01'
 func (t *Table) WhereStartEndDay(field, startDay, endDay string) *Table {
 	if startDay == "" && endDay == "" {
 		return t
@@ -211,7 +217,9 @@ func (t *Table) WhereStartEndDay(field, startDay, endDay string) *Table {
 	return t.Clone().Search.Where("DATE_FORMAT("+field+",'%Y-%m-%d') >= ? AND DATE_FORMAT("+field+",'%Y-%m-%d') <= ?", startDay, endDay).table
 }
 
-//WhereStartEndMonth 2007-01
+// WhereStartEndMonth DATE_FORMAT(field, '%Y-%m') >= startMonth AND DATE_FORMAT(field, '%Y-%m') <= endMonth
+// if startMonth == "", will do nothing
+// if endMonth == "", endMonth = startMonth
 func (t *Table) WhereStartEndMonth(field, startMonth, endMonth string) *Table {
 	if startMonth == "" && endMonth == "" {
 		return t
@@ -222,7 +230,9 @@ func (t *Table) WhereStartEndMonth(field, startMonth, endMonth string) *Table {
 	return t.Clone().Search.Where("DATE_FORMAT("+field+",'%Y-%m') >= ? AND DATE_FORMAT("+field+",'%Y-%m') <= ?", startMonth, endMonth).table
 }
 
-//WhereStartEndTime 00:00
+// WhereStartEndTime DATE_FORMAT(field, '%H:%i') >= startTime AND DATE_FORMAT(field, '%H:%i') <= endTime
+// if startTime == "", will do nothing
+// if endTime == "", endTime = startTime
 func (t *Table) WhereStartEndTime(field, startTime, endTime string) *Table {
 	if startTime == "" && endTime == "" {
 		return t
@@ -233,27 +243,28 @@ func (t *Table) WhereStartEndTime(field, startTime, endTime string) *Table {
 	return t.Clone().Search.Where("DATE_FORMAT("+field+",'%H:%i') >= ? AND DATE_FORMAT("+field+",'%H:%i') <= ?", startTime, endTime).table
 }
 
-//WhereToday 查看今天的。
+// WhereToday DATE_FORMAT(field, '%Y-%m-%d') = {today}
 func (t *Table) WhereToday(field string) *Table {
 	return t.Clone().Search.Where("DATE_FORMAT("+field+",'%Y-%m-%d') = ?", time.Now().Format("2006-01-02")).table
 }
 
-//WhereDay 这个字段等于这个时间
-func (t *Table) WhereDay(field, time string) *Table {
-	return t.Clone().Search.Where("DATE_FORMAT("+field+",'%Y-%m-%d') = ?", time).table
+// WhereDay DATE_FORMAT(field, '%Y-%m-%d') = day
+func (t *Table) WhereDay(field, day string) *Table {
+	return t.Clone().Search.Where("DATE_FORMAT("+field+",'%Y-%m-%d') = ?", day).table
 }
 
-//WhereMonth 这个字段等于这个时间
-func (t *Table) WhereMonth(field, time string) *Table {
-	return t.Clone().Search.Where("DATE_FORMAT("+field+",'%Y-%m') = ?", time).table
+// WhereMonth DATE_FORMAT(field, '%Y-%m') = month
+func (t *Table) WhereMonth(field, month string) *Table {
+	return t.Clone().Search.Where("DATE_FORMAT("+field+",'%Y-%m') = ?", month).table
 }
 
-//WhereBeforeToday 小于今天的时间
+// WhereBeforeToday DATE_FORMAT(field, '%Y-%m-%d') < {today}
 func (t *Table) WhereBeforeToday(field string) *Table {
 	return t.Clone().Search.Where("DATE_FORMAT("+field+",'%Y-%m-%d') < ?", time.Now().Format("2006-01-02")).table
 }
 
-//WhereLike field LIKE %like%
+// WhereLike field LIKE %like%
+// If like == "", will do nothing.
 func (t *Table) WhereLike(field, like string) *Table {
 	if like == "" {
 		return t
@@ -261,37 +272,48 @@ func (t *Table) WhereLike(field, like string) *Table {
 	return t.Clone().Search.Where(field+" LIKE ?", "%"+like+"%").table
 }
 
-//WhereLikeLeft field LIKE %like
+// WhereLikeLeft field LIKE %like
 func (t *Table) WhereLikeLeft(field, like string) *Table {
 	return t.Clone().Search.Where(field+" LIKE ?", "%"+like).table
 }
 
-//WhereID id = ?
+// WhereLikeRight field LIKE like%
+func (t *Table) WhereLikeRight(field, like string) *Table {
+	return t.Clone().Search.Where(field+" LIKE ?", like+"%").table
+}
+
+// WhereID id = ?
 func (t *Table) WhereID(id interface{}) *Table {
 	return t.Clone().Search.WhereID(id).table
 }
 
-//In In
+// In In(field, a,b,c)
 func (t *Table) In(field string, args ...interface{}) *Table {
 	return t.Clone().Search.In(field, args...).table
 }
 
-//Joins joins
+// Joins LEFT JOIN
+// with auto join map
 func (t *Table) Joins(query string, args ...string) *Table {
 	return t.Clone().Search.Joins(query, args...).table
 }
 
-//OrderBy OrderBy
+// OrderBy ORDER BY
 func (t *Table) OrderBy(field string, isDESC ...bool) *Table {
 	return t.Clone().Search.OrderBy(field, isDESC...).table
 }
 
-//Limit limit
+// Limit LIMIT
 func (t *Table) Limit(n interface{}) *Table {
 	return t.Clone().Search.Limit(n).table
 }
 
-//Fields fields
+// Fields fields
 func (t *Table) Fields(args ...string) *Table {
 	return t.Clone().Search.Fields(args...).table
+}
+
+// Group GROUP BY
+func (t *Table) Group(fields ...string) *Table {
+	return t.Clone().Search.Group(fields...).table
 }
