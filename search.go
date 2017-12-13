@@ -39,7 +39,7 @@ type Search struct {
 	joinConditions    JoinCons
 	whereConditions   []WhereCon
 	orderbyConditions []string
-	group             string
+	groupConditions   []string
 	with              string
 	having            string
 	limit             interface{}
@@ -131,12 +131,19 @@ func (s *Search) Offset(offset interface{}) *Search {
 }
 
 //Group GROUP BY
-func (s *Search) Group(query string) *Search {
-	s.group = query
+func (s *Search) Group(field ...string) *Search {
+	s.groupConditions = append(s.groupConditions, field...)
 	return s
 }
 
-//Parse 将各个条件整合成可以查询的SQL语句和参数
+// Parse 将各个条件整合成可以查询的SQL语句和参数
+// SELECT COUNT(*) AS total,cid
+// FROM report
+// WHERE id > 1000000
+// GROUP BY cid
+// ORDER BY COUNT(*)
+// LIMIT 1
+// OFFSET 1
 func (s *Search) Parse() (string, []interface{}) {
 	if s.raw == true {
 		return s.query, s.args
@@ -147,6 +154,7 @@ func (s *Search) Parse() (string, []interface{}) {
 		paddingwhere string
 		wheres       []string
 		orderby      string
+		groupby      string
 		limit        string
 		offset       string
 	)
@@ -180,6 +188,9 @@ func (s *Search) Parse() (string, []interface{}) {
 	if len(s.orderbyConditions) > 0 {
 		orderby = " ORDER BY " + strings.Join(s.orderbyConditions, ",")
 	}
+	if len(s.groupConditions) > 0 {
+		groupby = " GROUP BY " + strings.Join(s.groupConditions, ",")
+	}
 	if s.limit != nil {
 		limit = " LIMIT ?"
 		s.args = append(s.args, s.limit)
@@ -188,7 +199,7 @@ func (s *Search) Parse() (string, []interface{}) {
 		offset = " OFFSET ?"
 		s.args = append(s.args, s.offset)
 	}
-	s.query = fmt.Sprintf("SELECT %s FROM `%s`%s%s%s%s%s%s", fields, s.tableName, joins, paddingwhere, strings.Join(wheres, " AND "), orderby, limit, offset)
+	s.query = fmt.Sprintf("SELECT %s FROM `%s`%s%s%s%s%s%s%s", fields, s.tableName, joins, paddingwhere, strings.Join(wheres, " AND "), groupby, orderby, limit, offset)
 	// 如果table进行搜索了(table.RowsMap())，那么table下面所有的条件都会一直使用之前的搜索语句。
 	// s.raw = true
 	return s.query, s.args
