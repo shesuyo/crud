@@ -310,7 +310,20 @@ func (t *Table) Limit(n interface{}) *Table {
 
 // Fields fields
 func (t *Table) Fields(args ...string) *Table {
+	if len(args) == 0 {
+		return t
+	}
 	return t.Clone().Search.Fields(args...).table
+}
+
+// FieldCount equal Fields("COUNT(*) AS total")
+func (t *Table) FieldCount(as ...string) *Table {
+	asWhat := "total"
+	if len(as) > 0 {
+		sp := strings.Split(as[0], " ")
+		asWhat = sp[0]
+	}
+	return t.Clone().Search.Fields("COUNT(*) AS " + asWhat).table
 }
 
 // Group GROUP BY

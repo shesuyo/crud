@@ -58,6 +58,15 @@ func (s *Search) Clone() *Search {
 
 //Fields 需要查询的字段
 func (s *Search) Fields(args ...string) *Search {
+	if len(args) == 0 {
+		return s
+	}
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "$C", "$c":
+			args[i] = "COUNT(*) AS total"
+		}
+	}
 	s.fields = append(s.fields, args...)
 	return s
 }
@@ -205,12 +214,14 @@ func (s *Search) Parse() (string, []interface{}) {
 	return s.query, s.args
 }
 
-//DISTINCT XX
-//DISTICT XXX.XXX AS aaa
-//XXX.XXX AS aaa
+// DISTINCT XX
+// DISTICT XXX.XXX AS aaa
+// XXX.XXX AS aaa
+// COUNT(*) AS total
 func (s *Search) warpField(field string) (warpStr string, tablename string, fieldname string) {
 	if strings.Contains(field, " ") {
 		if strings.Contains(field, "AS") {
+			// XXX AS XXX
 			sp := strings.Split(field, " ")
 			for i := 0; i < len(sp); i++ {
 				if sp[i] == "AS" {
@@ -230,6 +241,8 @@ func (s *Search) warpField(field string) (warpStr string, tablename string, fiel
 	return
 }
 
+// warpFieldSingel field without space
+// warp xxx OR xxx.xxx OR * COUNT(*)
 func (s *Search) warpFieldSingel(field string) (warpStr string, tablename string, fieldname string) {
 
 	if strings.Contains(field, ".") {
@@ -245,18 +258,27 @@ func (s *Search) warpFieldSingel(field string) (warpStr string, tablename string
 		}
 		warpStr = strings.Replace(field, ".", ".`", 1) + "`"
 	} else {
+		// if not x.x,check this table field.
 		tablename = s.tableName
 		fieldname = field
-		if strings.Contains(field, "`") {
-			warpStr = field
-			return
+		warpStr = field
+		cols := s.table.DataBase.getColumns(tablename)
+		for _, col := range cols {
+			if col.Name == field {
+				warpStr = "`" + field + "`"
+				break
+			}
 		}
-		switch field {
-		case "*", "COUNT(*)":
-			warpStr = field
-		default:
-			warpStr = "`" + field + "`"
-		}
+		// if strings.Contains(field, "`") {
+		// 	warpStr = field
+		// 	return
+		// }
+		// switch field {
+		// case "*", "COUNT(*)":
+		// 	warpStr = field
+		// default:
+		// 	warpStr = "`" + field + "`"
+		// }
 	}
 	return
 }
