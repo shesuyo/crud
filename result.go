@@ -3,6 +3,7 @@ package crud
 import (
 	"database/sql"
 	"reflect"
+	"sort"
 	"strconv"
 	"unsafe"
 )
@@ -173,7 +174,7 @@ type (
 	RowMapInterface map[string]interface{}
 )
 
-//Bool return singel bool
+// Bool return singel bool
 func (rm RowMap) Bool(field ...string) bool {
 	if rm.NotFound() {
 		return false
@@ -193,7 +194,7 @@ func (rm RowMap) Bool(field ...string) bool {
 	return false
 }
 
-//FieldDefault get field if not reture the def value
+// FieldDefault get field if not reture the def value
 func (rm RowMap) FieldDefault(field, def string) string {
 	val, ok := rm[field]
 	if !ok {
@@ -202,7 +203,7 @@ func (rm RowMap) FieldDefault(field, def string) string {
 	return val
 }
 
-//Interface conver RowMap to RowMapInterface
+// Interface conver RowMap to RowMapInterface
 func (rm RowMap) Interface() RowMapInterface {
 	rmi := RowMapInterface{}
 	for k, v := range rm {
@@ -211,7 +212,7 @@ func (rm RowMap) Interface() RowMapInterface {
 	return rmi
 }
 
-//HaveRecord return it's have record
+// HaveRecord return it's have record
 func (rm RowMap) HaveRecord() bool {
 	if len(rm) > 0 {
 		return true
@@ -219,7 +220,7 @@ func (rm RowMap) HaveRecord() bool {
 	return false
 }
 
-//NotFound return it's not found
+// NotFound return it's not found
 func (rm RowMap) NotFound() bool {
 	if len(rm) == 0 {
 		return true
@@ -227,74 +228,7 @@ func (rm RowMap) NotFound() bool {
 	return false
 }
 
-//CIDFields cid可能的字段
-var CIDFields = [...]string{"categoryid", "cid", "hospital_id"}
-
-//UIDFields uid可能的字段
-var UIDFields = [...]string{"uid"}
-
-//NameFields name可能的字段
-var NameFields = [...]string{"name", "nickname", "title"}
-
-//CID return cid
-func (rm RowMap) CID() string {
-	var cid string
-	var ok bool
-	for _, field := range CIDFields {
-		if cid, ok = rm[field]; ok {
-			return cid
-		}
-	}
-	return cid
-}
-
-//ID return id
-func (rm RowMap) ID() string {
-	return rm["id"]
-}
-
-//IDInt return id type int
-func (rm RowMap) IDInt() int {
-	return rm.Int("id")
-}
-
-//CIDInt return cid int值
-func (rm RowMap) CIDInt() int {
-	cid, _ := strconv.Atoi(rm.CID())
-	return cid
-}
-
-//Name return name type string
-func (rm RowMap) Name() string {
-	var name string
-	var ok bool
-	for _, field := range NameFields {
-		if name, ok = rm[field]; ok {
-			return name
-		}
-	}
-	return name
-}
-
-//UID return uid type string
-func (rm RowMap) UID() string {
-	var uid string
-	var ok bool
-	for _, field := range UIDFields {
-		if uid, ok = rm[field]; ok {
-			return uid
-		}
-	}
-	return uid
-}
-
-//UIDInt return uid type int
-func (rm RowMap) UIDInt() int {
-	uid, _ := strconv.Atoi(rm.UID())
-	return uid
-}
-
-//Int return int field
+// Int return int field
 func (rm RowMap) Int(field string, def ...int) int {
 	val, ok := rm[field]
 	if ok {
@@ -324,7 +258,7 @@ func (rm RowMap) Float64(field string, def ...float64) float64 {
 	return 0
 }
 
-//String return map[string]string
+// String return map[string]string
 func (rm RowsMap) String() []map[string]string {
 	ms := []map[string]string{}
 	for _, r := range rm {
@@ -333,7 +267,7 @@ func (rm RowsMap) String() []map[string]string {
 	return ms
 }
 
-//Interface conver RowsMap to RowsMapInterface
+// Interface conver RowsMap to RowsMapInterface
 func (rm RowsMap) Interface() RowsMapInterface {
 	rmi := RowsMapInterface{}
 	for _, v := range rm {
@@ -342,7 +276,7 @@ func (rm RowsMap) Interface() RowsMapInterface {
 	return rmi
 }
 
-//Filter 过滤指定字段
+// Filter 过滤指定字段
 func (rm RowsMap) Filter(field, equal string) RowsMap {
 	frm := RowsMap{}
 	for _, v := range rm {
@@ -353,7 +287,7 @@ func (rm RowsMap) Filter(field, equal string) RowsMap {
 	return frm
 }
 
-//FilterFunc fileter by func (like jq)
+// FilterFunc fileter by func (like jq)
 func (rm RowsMap) FilterFunc(f func(RowMap) bool) RowsMap {
 	frm := RowsMap{}
 	for _, v := range rm {
@@ -364,9 +298,9 @@ func (rm RowsMap) FilterFunc(f func(RowMap) bool) RowsMap {
 	return frm
 }
 
-//EachAddTableString 根据一个字段查找
-//https://github.com/shesuyo/crud/issues/11
-//第一个是原来的，第二个是新的。
+// EachAddTableString 根据一个字段查找
+// https://github.com/shesuyo/crud/issues/11
+// 第一个是原来的，第二个是新的。
 func (rm *RowsMap) EachAddTableString(table *Table, args ...string) {
 	argsLen := len(args)
 	if argsLen < 4 || argsLen%2 != 0 {
@@ -451,7 +385,7 @@ func (rm RowsMap) WarpByField(field string) RowsWraps {
 	return rw
 }
 
-//HaveID 是否有这个ID
+// HaveID 是否有这个ID
 func (rm RowsMap) HaveID(id string) bool {
 	for _, v := range rm {
 		if v["id"] == id {
@@ -461,7 +395,7 @@ func (rm RowsMap) HaveID(id string) bool {
 	return false
 }
 
-//Pluck 取出中间的一列
+// Pluck 取出中间的一列
 func (rm RowsMap) Pluck(key string) []interface{} {
 	var vs []interface{}
 	for _, v := range rm {
@@ -470,7 +404,7 @@ func (rm RowsMap) Pluck(key string) []interface{} {
 	return vs
 }
 
-//PluckString 取出中间的一列
+// PluckString 取出中间的一列
 func (rm RowsMap) PluckString(key string) []string {
 	var vs []string
 	for _, v := range rm {
@@ -479,7 +413,7 @@ func (rm RowsMap) PluckString(key string) []string {
 	return vs
 }
 
-//PluckInt 取出中间的一列
+// PluckInt 取出中间的一列
 func (rm RowsMap) PluckInt(key string) []int {
 	var vs []int
 	for _, v := range rm {
@@ -487,6 +421,52 @@ func (rm RowsMap) PluckInt(key string) []int {
 		vs = append(vs, val)
 	}
 	return vs
+}
+
+type RowsMapSort struct {
+	rm *RowsMap
+	f  func(RowsMap, int, int) bool
+}
+
+// Len len
+func (rs RowsMapSort) Len() int {
+	return len(*(rs.rm))
+}
+
+// Swap swap
+func (rs RowsMapSort) Swap(i, j int) {
+	(*(rs.rm))[i], (*(rs.rm))[j] = (*(rs.rm))[j], (*(rs.rm))[i]
+}
+
+func (rs RowsMapSort) Less(i, j int) bool {
+	return rs.f(*(rs.rm), i, j)
+}
+
+// Sort sort by string field
+// default aes
+func (rm *RowsMap) Sort(field string, isDesc bool) {
+	rm.SortFunc(func(rm RowsMap, i, j int) bool {
+		if isDesc {
+			return rm[i][field] > rm[j][field]
+		}
+		return rm[i][field] < rm[j][field]
+	})
+}
+
+// SortInt sort by int field
+func (rm *RowsMap) SortInt(field string, isDesc bool) {
+	rm.SortFunc(func(rm RowsMap, i, j int) bool {
+		if isDesc {
+			return rm[i].Int(field) > rm[j].Int(field)
+		}
+		return rm[i].Int(field) < rm[j].Int(field)
+	})
+}
+
+// SortFunc sort by func
+func (rm *RowsMap) SortFunc(f func(RowsMap, int, int) bool) {
+	rms := RowsMapSort{rm: rm, f: f}
+	sort.Sort(rms)
 }
 
 // RowsMap []map[string]string 所有类型都将返回字符串类型
@@ -520,7 +500,7 @@ func (r *SQLRows) RowsMap() RowsMap {
 	return rs
 }
 
-//RowMap RowMap
+// RowMap RowMap
 func (r *SQLRows) RowMap() RowMap {
 	out := r.RowsMap()
 	if len(out) > 0 {
