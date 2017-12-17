@@ -404,7 +404,7 @@ func (rm RowsMap) Pluck(key string) []interface{} {
 	return vs
 }
 
-// PluckString 取出中间的一列
+// PluckString pluck field with string
 func (rm RowsMap) PluckString(key string) []string {
 	var vs []string
 	for _, v := range rm {
@@ -413,7 +413,7 @@ func (rm RowsMap) PluckString(key string) []string {
 	return vs
 }
 
-// PluckInt 取出中间的一列
+// PluckInt pluck field with int
 func (rm RowsMap) PluckInt(key string) []int {
 	var vs []int
 	for _, v := range rm {
@@ -423,6 +423,25 @@ func (rm RowsMap) PluckInt(key string) []int {
 	return vs
 }
 
+// Unique unique field
+func (rm RowsMap) Unique(field string) RowsMap {
+	urm := RowsMap{}
+	for i := 0; i < len(rm); i++ {
+		isUnique := true
+		for j := 0; j < len(urm); j++ {
+			if urm[j][field] == rm[i][field] {
+				isUnique = false
+				break
+			}
+		}
+		if isUnique {
+			urm = append(urm, rm[i])
+		}
+	}
+	return urm
+}
+
+// RowsMapSort struct for sort.Sort
 type RowsMapSort struct {
 	rm *RowsMap
 	f  func(RowsMap, int, int) bool
@@ -444,8 +463,8 @@ func (rs RowsMapSort) Less(i, j int) bool {
 
 // Sort sort by string field
 // default aes
-func (rm *RowsMap) Sort(field string, isDesc bool) {
-	rm.SortFunc(func(rm RowsMap, i, j int) bool {
+func (rm *RowsMap) Sort(field string, isDesc bool) *RowsMap {
+	return rm.SortFunc(func(rm RowsMap, i, j int) bool {
 		if isDesc {
 			return rm[i][field] > rm[j][field]
 		}
@@ -454,8 +473,8 @@ func (rm *RowsMap) Sort(field string, isDesc bool) {
 }
 
 // SortInt sort by int field
-func (rm *RowsMap) SortInt(field string, isDesc bool) {
-	rm.SortFunc(func(rm RowsMap, i, j int) bool {
+func (rm *RowsMap) SortInt(field string, isDesc bool) *RowsMap {
+	return rm.SortFunc(func(rm RowsMap, i, j int) bool {
 		if isDesc {
 			return rm[i].Int(field) > rm[j].Int(field)
 		}
@@ -464,9 +483,10 @@ func (rm *RowsMap) SortInt(field string, isDesc bool) {
 }
 
 // SortFunc sort by func
-func (rm *RowsMap) SortFunc(f func(RowsMap, int, int) bool) {
+func (rm *RowsMap) SortFunc(f func(RowsMap, int, int) bool) *RowsMap {
 	rms := RowsMapSort{rm: rm, f: f}
 	sort.Sort(rms)
+	return rm
 }
 
 // RowsMap []map[string]string 所有类型都将返回字符串类型
