@@ -258,6 +258,15 @@ func (rm RowMap) Float64(field string, def ...float64) float64 {
 	return 0
 }
 
+// Count count
+func (rm RowsMap) Count(field string) int {
+	count := 0
+	for _, v := range rm {
+		count += v.Int(field)
+	}
+	return count
+}
+
 // String return map[string]string
 func (rm RowsMap) String() []map[string]string {
 	ms := []map[string]string{}
