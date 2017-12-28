@@ -131,3 +131,12 @@ func placeholder(n int) string {
 	}
 	return strings.Join(holder, ",")
 }
+
+//MapsToCRUDRows convert []map[string]string to crud.RowsMap
+func MapsToCRUDRows(m []map[string]string) RowsMap {
+	rm := RowsMap{}
+	for _, v := range m {
+		rm = append(rm, RowMap(v))
+	}
+	return rm
+}

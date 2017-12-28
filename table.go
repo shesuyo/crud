@@ -20,10 +20,11 @@ func (t *Table) Name() string {
 	return t.tableName
 }
 
+//
 // All 返回这张表所有数据
-func (t *Table) All() RowsMap {
-	return t.Query("SELECT * FROM " + t.tableName).RowsMap()
-}
+// func (t *Table) All() RowsMap {
+// 	return t.Query("SELECT * FROM " + t.tableName).RowsMap()
+// }
 
 // // Count 返回表有多少条数据
 // func (t *Table) Count() int {
