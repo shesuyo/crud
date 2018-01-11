@@ -95,9 +95,35 @@ func (t *Table) Create(m map[string]interface{}, checks ...string) (int64, error
 	return id, nil
 }
 
-// CreateBatch create batch
-func (t *Table) CreateBatch(ms []map[string]interface{}) (int, error) {
-	return 0, nil
+// Creates 创建多列
+func (t *Table) Creates(ms []map[string]interface{}) (int, error) {
+	if len(ms) == 0 {
+		return 0, nil
+	}
+
+	// INSERT INTO `feedback` (`task_id`, `template_question_id`, `question_options_id`, `suggestion`, `member_id`) VALUES ('1', '1', '1', '1', '1'),('1', '1', '1', '1', '1')
+	fields := []string{}
+	args := []interface{}{}
+	sqlFields := []string{}
+	sqlArgs := []string{}
+	sqlArg := "(" + argslice(len(ms[0])) + ")"
+	for i := 0; i < len(ms); i++ {
+		sqlArgs = append(sqlArgs, sqlArg)
+	}
+
+	for k := range ms[0] {
+		fields = append(fields, k)
+		sqlFields = append(sqlFields, "`"+k+"`")
+	}
+
+	for _, v := range ms {
+		for _, field := range fields {
+			args = append(args, v[field])
+		}
+	}
+
+	rows, err := t.Exec(fmt.Sprintf("INSERT INTO `%s` (%s) VALUES %s ", t.tableName, strings.Join(sqlFields, ","), strings.Join(sqlArgs, ",")), args...).RowsAffected()
+	return int(rows), err
 }
 
 //Reads 查找
