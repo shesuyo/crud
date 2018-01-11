@@ -297,6 +297,7 @@ func (rm RowsMap) Filter(field, equal string) RowsMap {
 }
 
 // FilterFunc fileter by func (like jq)
+// return true will be append
 func (rm RowsMap) FilterFunc(f func(RowMap) bool) RowsMap {
 	frm := RowsMap{}
 	for _, v := range rm {
@@ -426,15 +427,23 @@ func (rm RowsMap) MultiWarpByField(fields ...string) []MultiWarp {
 	for _, r := range rm {
 		levelIdx := len(levels) - 1
 		for i := len(fields) - 4; i >= 2; i -= 2 {
+			// fmt.Println("i,levelIdx:", i, levelIdx)
 			isAppend := false
 			// 不需要ID为0的项，认为不存在。
 			if r[fields[i]] == "0" || r[fields[i]] == "" {
+				// 这里没有减层，所以之前有BUG
+				// 以后需要注意在continue的时候没有处理for最后面的loop处理
+				levelIdx--
 				continue
 			}
 			newWarp := MultiWarp{ID: r[fields[i]], Name: r[fields[i+1]], preID: r[fields[i-2]], tailID: r[fields[i+2]], Vals: make([]MultiWarp, 0)}
+			// fmt.Println(r, stringify(newWarp))
 			// newWarp := MultiWarp{ID: r[fields[i]], Name: r[fields[i+1]], preID: r[fields[i-2]], tailID: r[fields[i+2]]}
 			for _, level := range levels[levelIdx] {
-				if level.ID == newWarp.ID && level.preID == newWarp.preID && level.tailID == newWarp.tailID {
+				if level.ID == newWarp.ID && level.preID == newWarp.preID {
+					// 只要父节点和本身节点是一样的话，就是重复的了。
+					// 因为这棵树是从前面（idx=0）开始的，所以不能以同一个尾判断是同一个，同级下也可能有相同的尾。
+					// if level.ID == newWarp.ID && level.preID == newWarp.preID && level.tailID == newWarp.tailID {
 					isAppend = true
 					break
 				}
@@ -446,11 +455,21 @@ func (rm RowsMap) MultiWarpByField(fields ...string) []MultiWarp {
 		}
 	}
 
+	// for i := 0; i < len(levels); i++ {
+	// 	fmt.Println(i, len(levels[i]), stringify(levels[i]))
+	// }
+
+	// 从倒数第二个level开始向前合并
 	for i := len(levels) - 2; i >= 0; i-- {
 		for lIdx := 0; lIdx < len(levels[i]); lIdx++ {
 			for cIdx := 0; cIdx < len(levels[i+1]); cIdx++ {
-				if levels[i][lIdx].tailID == levels[i+1][cIdx].ID {
+				// 如果前面的尾巴是
+				// tailID其实在这里是没有用的，因为不同的tailID,可能已经被除重了。
+				if levels[i][lIdx].ID == levels[i+1][cIdx].preID {
 					levels[i][lIdx].Vals = append(levels[i][lIdx].Vals, levels[i+1][cIdx])
+				} else {
+					// not match
+					// fmt.Println(levels[i][lIdx].Name, levels[i][lIdx].tailID, levels[i+1][cIdx].Name, levels[i+1][cIdx].ID)
 				}
 			}
 		}

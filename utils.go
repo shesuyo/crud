@@ -1,6 +1,7 @@
 package crud
 
 import (
+	"encoding/json"
 	"reflect"
 	"strings"
 	"sync"
@@ -139,4 +140,9 @@ func MapsToCRUDRows(m []map[string]string) RowsMap {
 		rm = append(rm, RowMap(v))
 	}
 	return rm
+}
+
+func stringify(v interface{}) string {
+	bs, _ := json.Marshal(&v)
+	return string(bs)
 }

@@ -1,7 +1,9 @@
 package crud
 
-import "testing"
-import "strconv"
+import (
+	"strconv"
+	"testing"
+)
 
 func genRowsMap(field string, args ...int) *RowsMap {
 	rm := RowsMap{}
@@ -40,5 +42,55 @@ func TestRowsMap_SortFunc(t *testing.T) {
 				t.Fatal("rows map order wrong:", tt.rm)
 			}
 		}
+	}
+}
+
+func TestRowsMap_MultiWarpByField(t *testing.T) {
+	type args struct {
+		fields []string
+	}
+	tests := []struct {
+		name string
+		rm   RowsMap
+		args args
+		want []MultiWarp
+	}{
+		// TODO: Add test cases.
+		{"1", RowsMap{
+			RowMap{"bid": "1", "bname": "电", "sid": "1", "sname": "灯不亮", "gid": "1", "gname": "待整理"},
+			RowMap{"bid": "1", "bname": "电", "sid": "2", "sname": "灯松脱"},
+			RowMap{"bid": "2", "bname": "水", "sid": "3", "sname": "没水"},
+			RowMap{"bid": "2", "bname": "水", "sid": "4", "sname": "漏水"},
+		}, args{fields: []string{"bid", "bname", "sid", "sname", "gid", "gname"}}, []MultiWarp{
+			MultiWarp{
+				ID:   "1",
+				Name: "电",
+				Vals: []MultiWarp{
+					MultiWarp{ID: "1", Name: "灯不亮", Vals: []MultiWarp{
+						MultiWarp{
+							ID:   "1",
+							Name: "待整理",
+							Vals: []MultiWarp{},
+						},
+					}},
+					MultiWarp{ID: "2", Name: "灯松脱", Vals: []MultiWarp{}},
+				},
+			},
+			MultiWarp{
+				ID:   "2",
+				Name: "水",
+				Vals: []MultiWarp{
+					MultiWarp{ID: "3", Name: "没水", Vals: []MultiWarp{}},
+					MultiWarp{ID: "4", Name: "漏水", Vals: []MultiWarp{}},
+				},
+			},
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.rm.MultiWarpByField(tt.args.fields...); stringify(got) != stringify(tt.want) {
+				t.Errorf("RowsMap.MultiWarpByField() = %v, want %v", stringify(got), stringify(tt.want))
+			}
+		})
 	}
 }
