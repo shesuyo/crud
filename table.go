@@ -191,6 +191,9 @@ func (t *Table) CreateOrUpdate(m map[string]interface{}, keys ...string) error {
 
 // Delete 删除
 func (t *Table) Delete(m map[string]interface{}) (int64, error) {
+	if len(m) == 0 {
+		return 0, errors.New("delete map len not be 0")
+	}
 	ks, vs := ksvs(m, " = ? ")
 	if t.tableColumns[t.tableName].HaveColumn(IsDeleted) {
 		return t.Exec(fmt.Sprintf("UPDATE `%s` SET is_deleted = '1', deleted_at = '%s' WHERE %s", t.tableName, time.Now().Format(TimeFormat), strings.Join(ks, "AND")), vs...).RowsAffected()
