@@ -2,6 +2,7 @@ package crud
 
 import (
 	"database/sql"
+	"fmt"
 	"reflect"
 	"sort"
 	"strconv"
@@ -583,6 +584,16 @@ func (rm *RowsMap) SortFunc(f func(RowsMap, int, int) bool) *RowsMap {
 	rms := RowsMapSort{rm: rm, f: f}
 	sort.Sort(rms)
 	return rm
+}
+
+// String get string field from RowMapInterface
+func (rm RowMapInterface) String(field string) string {
+	str, ok := rm[field].(string)
+	if ok {
+		return str
+	}
+	str = fmt.Sprintf("%v", rm[field])
+	return str
 }
 
 // RowsMap []map[string]string 所有类型都将返回字符串类型
