@@ -494,7 +494,7 @@ func (rm RowsMap) HaveID(id string) bool {
 
 // Pluck 取出中间的一列
 func (rm RowsMap) Pluck(key string) []interface{} {
-	var vs []interface{}
+	var vs = make([]interface{}, 0)
 	for _, v := range rm {
 		vs = append(vs, v[key])
 	}
@@ -503,7 +503,7 @@ func (rm RowsMap) Pluck(key string) []interface{} {
 
 // PluckString pluck field with string
 func (rm RowsMap) PluckString(key string) []string {
-	var vs []string
+	var vs = make([]string, 0)
 	for _, v := range rm {
 		vs = append(vs, v[key])
 	}
@@ -512,7 +512,7 @@ func (rm RowsMap) PluckString(key string) []string {
 
 // PluckInt pluck field with int
 func (rm RowsMap) PluckInt(key string) []int {
-	var vs []int
+	var vs = make([]int, 0)
 	for _, v := range rm {
 		val, _ := strconv.Atoi(v[key])
 		vs = append(vs, val)
