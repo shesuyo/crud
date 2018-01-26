@@ -111,7 +111,7 @@ func (s *Search) Joins(tablename string, condition ...string) *Search {
 	return s
 }
 
-//OrderBy OrderBy
+//OrderBy OrderBy 默认升序
 func (s *Search) OrderBy(field string, isDESC ...bool) *Search {
 	if len(isDESC) > 0 && isDESC[0] {
 		s.orderbyConditions = append(s.orderbyConditions, field+" DESC")

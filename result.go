@@ -596,6 +596,15 @@ func (rm RowMapInterface) String(field string) string {
 	return str
 }
 
+// RowMap convert RowMapInterface to RowMap
+func (rm RowMapInterface) RowMap() RowMap {
+	r := RowMap{}
+	for k, v := range rm {
+		r[k] = fmt.Sprintf("%v", v)
+	}
+	return r
+}
+
 // RowsMap []map[string]string 所有类型都将返回字符串类型
 func (r *SQLRows) RowsMap() RowsMap {
 	rs := make([]RowMap, 0) //为了JSON输出的时候为[]
