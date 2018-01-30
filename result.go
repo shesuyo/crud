@@ -325,12 +325,19 @@ func (rm *RowsMap) EachAddTableString(table *Table, args ...string) {
 	rmLen := len(*rm)
 	datasLen := len(datas)
 	for i := 0; i < rmLen; i++ {
+		isFound := false
 		for j := 0; j < datasLen; j++ {
 			if (*rm)[i][args[0]] == datas[j][args[1]] {
+				isFound = true
 				for k := 2; k < argsLen; k += 2 {
 					(*rm)[i][args[k+1]] = datas[j][args[k]]
 				}
 				break
+			}
+		}
+		if !isFound {
+			for k := 2; k < argsLen; k += 2 {
+				(*rm)[i][args[k+1]] = ""
 			}
 		}
 	}
