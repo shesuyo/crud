@@ -100,7 +100,6 @@ func (t *Table) Creates(ms []map[string]interface{}) (int, error) {
 	if len(ms) == 0 {
 		return 0, nil
 	}
-
 	// INSERT INTO `feedback` (`task_id`, `template_question_id`, `question_options_id`, `suggestion`, `member_id`) VALUES ('1', '1', '1', '1', '1'),('1', '1', '1', '1', '1')
 	fields := []string{}
 	args := []interface{}{}
@@ -121,7 +120,6 @@ func (t *Table) Creates(ms []map[string]interface{}) (int, error) {
 			args = append(args, v[field])
 		}
 	}
-
 	rows, err := t.Exec(fmt.Sprintf("INSERT INTO `%s` (%s) VALUES %s ", t.tableName, strings.Join(sqlFields, ","), strings.Join(sqlArgs, ",")), args...).RowsAffected()
 	return int(rows), err
 }
@@ -146,7 +144,9 @@ func (t *Table) Read(m map[string]interface{}) map[string]string {
 
 // Update 更新
 // 如果map里面有id的话会自动删除id，然后使用id来作为更新的条件。
-func (t *Table) Update(m map[string]interface{}, keys ...string) error {
+func (t *Table) Update(mo map[string]interface{}, keys ...string) error {
+	// 因为会删除id，所以使用的时候要copy一个map
+	m := copyMap(mo)
 	if len(keys) == 0 {
 		keys = append(keys, "id")
 	}

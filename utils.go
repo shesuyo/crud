@@ -146,3 +146,11 @@ func stringify(v interface{}) string {
 	bs, _ := json.Marshal(&v)
 	return string(bs)
 }
+
+func copyMap(m map[string]interface{}) map[string]interface{} {
+	newm := make(map[string]interface{}, len(m))
+	for k, v := range m {
+		newm[k] = v
+	}
+	return newm
+}
