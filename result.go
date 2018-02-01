@@ -486,6 +486,9 @@ func (rm RowsMap) MultiWarpByField(fields ...string) []MultiWarp {
 	// fmt.Println("write", len(jsonText))
 	// ioutil.WriteFile("a.json", []byte(jsonText), 0777)
 	// fmt.Println("done")
+	if levels[0] == nil {
+		return []MultiWarp{}
+	}
 	return levels[0]
 }
 
