@@ -502,6 +502,26 @@ func (rm RowsMap) HaveID(id string) bool {
 	return false
 }
 
+// RowID 根据id获取所在行
+func (rm RowsMap) RowID(id string) RowMap {
+	for _, v := range rm {
+		if v["id"] == id {
+			return v
+		}
+	}
+	return nil
+}
+
+// RowField 根据字段获取所在行
+func (rm RowsMap) RowField(val, field string) RowMap {
+	for _, v := range rm {
+		if v[field] == val {
+			return v
+		}
+	}
+	return nil
+}
+
 // Pluck 取出中间的一列
 func (rm RowsMap) Pluck(key string) []interface{} {
 	var vs = make([]interface{}, 0)
