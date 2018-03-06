@@ -360,3 +360,13 @@ func (t *Table) FieldCount(as ...string) *Table {
 func (t *Table) Group(fields ...string) *Table {
 	return t.Clone().Search.Group(fields...).table
 }
+
+// Count count
+func (t *Table) Count() int {
+	s := t.Clone().Search
+	var count int
+	s.fields = []string{"COUNT(*)"}
+	query, args := s.Parse()
+	s.table.Query(query, args...).Find(&count)
+	return count
+}

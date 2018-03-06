@@ -380,11 +380,11 @@ func (s *Search) Finds(v interface{}) {
 	s.table.FindAll(v, append([]interface{}{query}, args...)...)
 }
 
-//Count 计算这次查询结果的个数
-func (s *Search) Count() int {
-	var count int
-	s.fields = []string{"COUNT(*)"}
-	query, args := s.Parse()
-	s.table.Query(query, args...).Find(&count)
-	return count
-}
+// //Count 计算这次查询结果的个数
+// func (s *Search) Count() int {
+// 	var count int
+// 	s.fields = []string{"COUNT(*)"}
+// 	query, args := s.Parse()
+// 	s.table.Query(query, args...).Find(&count)
+// 	return count
+// }
