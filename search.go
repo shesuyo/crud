@@ -85,7 +85,7 @@ func (s *Search) WhereID(id interface{}) *Search {
 
 //In in语法
 func (s *Search) In(field string, args ...interface{}) *Search {
-	//In没有参数的话SQL就会报错
+	//in没有参数的话SQL就会报错
 	if len(args) == 0 {
 		return s
 	}
@@ -304,6 +304,32 @@ func (s *Search) RawsMapInterface() RowsMapInterface {
 func (s *Search) RowMap() RowMap {
 	query, args := s.Parse()
 	return s.table.Query(query, args...).RowMap()
+}
+
+// Explain explian sql
+func (s *Search) Explain(debug bool) Explain {
+	query, args := s.Parse()
+	r := s.table.Query("EXPLAIN "+query, args...).RowMap()
+	if debug {
+		fmt.Println(query)
+		fmt.Println(args)
+		fmt.Println(getFullSQL(query, args...))
+	}
+	e := Explain{
+		ID:           r.Int("id"),
+		SelectType:   r["select_type"],
+		Table:        r["table"],
+		Partitions:   r["partitions"],
+		Type:         r["type"],
+		PossibleKeys: r["possible_keys"],
+		Key:          r["key"],
+		KeyLen:       r.Int("key_len"),
+		Ref:          r["ref"],
+		Rows:         r.Int("rows"),
+		Filtered:     r.Int("filtered"),
+		Extra:        r["extra"],
+	}
+	return e
 }
 
 // func (s *Search) String() string {

@@ -12,6 +12,8 @@ var (
 	fullTitlesReplacer *strings.Replacer
 	//m和rm公用同一个
 	dbNameMap = NewMapStringString()
+
+	placeholders = []string{"", "?", "?,?", "?,?,?", "?,?,?,?", "?,?,?,?,?", "?,?,?,?,?,?", "?,?,?,?,?,?,?", "?,?,?,?,?,?,?,?", "?,?,?,?,?,?,?,?,?", "?,?,?,?,?,?,?,?,?,?"}
 )
 
 //SafeMapStringString 安全的map[string]string
@@ -125,7 +127,17 @@ func structToMap(v reflect.Value) map[string]interface{} {
 	return m
 }
 
+// Placeholder sql占位
+// n == 1 return ?
+// n == 2 return ?,?
+func Placeholder(n int) string {
+	return placeholder(n)
+}
+
 func placeholder(n int) string {
+	if n <= 10 {
+		return placeholders[n]
+	}
 	holder := []string{}
 	for i := 0; i < n; i++ {
 		holder = append(holder, "?")

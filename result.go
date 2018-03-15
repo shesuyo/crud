@@ -259,13 +259,13 @@ func (rm RowMap) Float64(field string, def ...float64) float64 {
 	return 0
 }
 
-// Count count
-func (rm RowsMap) Count(field string) int {
-	count := 0
+// Sum Sum
+func (rm RowsMap) Sum(field string) int {
+	sum := 0
 	for _, v := range rm {
-		count += v.Int(field)
+		sum += v.Int(field)
 	}
-	return count
+	return sum
 }
 
 // String return map[string]string
@@ -520,6 +520,17 @@ func (rm RowsMap) RowField(val, field string) RowMap {
 		}
 	}
 	return nil
+}
+
+// RowsField 根据字段找出多列
+func (rm RowsMap) RowsField(val, field string) RowsMap {
+	rows := RowsMap{}
+	for _, v := range rm {
+		if v[field] == val {
+			rows = append(rows, v)
+		}
+	}
+	return rows
 }
 
 // Pluck 取出中间的一列
@@ -879,3 +890,23 @@ func scanRows(rows *sql.Rows) RowMap {
 //	}
 //	return affected, nil
 //}
+
+// Explain sql explain struct
+type Explain struct {
+	ID           int    `json:"id"`
+	SelectType   string `json:"select_type"`
+	Table        string `json:"table"`
+	Partitions   string `json:"partitions"`
+	Type         string `json:"type"`
+	PossibleKeys string `json:"possible_keys"`
+	Key          string `json:"key"`
+	KeyLen       int    `json:"key_len"`
+	Ref          string `json:"ref"`
+	Rows         int    `json:"rows"`
+	Filtered     int    `json:"filtered"`
+	Extra        string `json:"extra"`
+}
+
+func (e Explain) String() string {
+	return fmt.Sprintf("%#v", e)
+}
