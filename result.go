@@ -405,20 +405,27 @@ func (rm RowsMap) WarpByField(field string) RowsWraps {
 
 // MultiWarp multi warp
 type MultiWarp struct {
-	ID     string      `json:"id"`
-	Name   string      `json:"name"`
-	Vals   []MultiWarp `json:"vals"`
-	preID  string
-	tailID string
+	ID    string      `json:"id"`
+	Name  string      `json:"name"`
+	Vals  []MultiWarp `json:"vals"`
+	preID string
+	// tailID string
 }
 
 // MultiWarpByField multi level warp by field
 // fields id1,key1,id2,key2,id3,key3
+// 先传id再传字段
 // if RowMap[key] == "" , abandon key+n(n>=0)
 // 方案1：一层一层的进行拼接
 // 方案2： 所有层次一起拼接
 // 方案3： 从最后一层向前拼接
 // 方案4： 所有节点一起算出来，然后再进行首尾拼接。
+// 同头同尾也会有问题
+/*
+3 2 1
+3 2 2
+4 2 3
+*/
 func (rm RowsMap) MultiWarpByField(fields ...string) []MultiWarp {
 
 	length := len(fields)
@@ -427,15 +434,16 @@ func (rm RowsMap) MultiWarpByField(fields ...string) []MultiWarp {
 		return []MultiWarp{}
 	}
 
+	// fields最前面和最后面是没有的。
 	fields = append(fields, "", "")
 	fields = append([]string{"", ""}, fields...)
 
-	levels := make([][]MultiWarp, length/2)
+	levels := make([][]MultiWarp, length/2) // 层数
 
 	for _, r := range rm {
+		// 每一行处理所有层
 		levelIdx := len(levels) - 1
 		for i := len(fields) - 4; i >= 2; i -= 2 {
-			// fmt.Println("i,levelIdx:", i, levelIdx)
 			isAppend := false
 			// 不需要ID为0的项，认为不存在。
 			if r[fields[i]] == "0" || r[fields[i]] == "" {
@@ -444,7 +452,18 @@ func (rm RowsMap) MultiWarpByField(fields ...string) []MultiWarp {
 				levelIdx--
 				continue
 			}
-			newWarp := MultiWarp{ID: r[fields[i]], Name: r[fields[i+1]], preID: r[fields[i-2]], tailID: r[fields[i+2]], Vals: make([]MultiWarp, 0)}
+			var preID string
+			tmpPre := i - 2
+			for tmpPre >= 0 {
+				preID += r[fields[tmpPre]] + "-"
+			}
+			newWarp := MultiWarp{
+				ID:    r[fields[i]],
+				Name:  r[fields[i+1]],
+				preID: preID,
+				// tailID: r[fields[i+2]],
+				Vals: make([]MultiWarp, 0),
+			}
 			// fmt.Println(r, stringify(newWarp))
 			// newWarp := MultiWarp{ID: r[fields[i]], Name: r[fields[i+1]], preID: r[fields[i-2]], tailID: r[fields[i+2]]}
 			for _, level := range levels[levelIdx] {
@@ -466,7 +485,6 @@ func (rm RowsMap) MultiWarpByField(fields ...string) []MultiWarp {
 	// for i := 0; i < len(levels); i++ {
 	// 	fmt.Println(i, len(levels[i]), stringify(levels[i]))
 	// }
-
 	// 从倒数第二个level开始向前合并
 	for i := len(levels) - 2; i >= 0; i-- {
 		for lIdx := 0; lIdx < len(levels[i]); lIdx++ {

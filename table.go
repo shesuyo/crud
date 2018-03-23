@@ -346,14 +346,14 @@ func (t *Table) Fields(args ...string) *Table {
 	return t.Clone().Search.Fields(args...).table
 }
 
-// FieldCount equal Fields("COUNT(*) AS total")
+// FieldCount equal Fields("COUNT(1) AS total")
 func (t *Table) FieldCount(as ...string) *Table {
 	asWhat := "total"
 	if len(as) > 0 {
 		sp := strings.Split(as[0], " ")
 		asWhat = sp[0]
 	}
-	return t.Clone().Search.Fields("COUNT(*) AS " + asWhat).table
+	return t.Clone().Search.Fields("COUNT(1) AS " + asWhat).table
 }
 
 // Group GROUP BY
@@ -365,7 +365,7 @@ func (t *Table) Group(fields ...string) *Table {
 func (t *Table) Count() int {
 	s := t.Clone().Search
 	var count int
-	s.fields = []string{"COUNT(*)"}
+	s.fields = []string{"COUNT(1)"}
 	query, args := s.Parse()
 	s.table.Query(query, args...).Find(&count)
 	return count

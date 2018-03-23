@@ -302,7 +302,8 @@ func (s *Search) RawsMapInterface() RowsMapInterface {
 
 //RowMap RowMap
 func (s *Search) RowMap() RowMap {
-	query, args := s.Parse()
+	nb := (*s).Clone().Limit(1)
+	query, args := nb.Parse()
 	return s.table.Query(query, args...).RowMap()
 }
 
