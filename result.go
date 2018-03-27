@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
+	"strings"
 	"unsafe"
 )
 
@@ -297,6 +298,21 @@ func (rm RowsMap) Filter(field, equal string) RowsMap {
 	return frm
 }
 
+// FilterIn 指定字段在数组里面皆会被挑选出来
+func (rm RowsMap) FilterIn(field string, equals []string) RowsMap {
+	em := make(map[string]bool, len(equals))
+	for _, e := range equals {
+		em[e] = true
+	}
+	frm := RowsMap{}
+	for _, v := range rm {
+		if em[v[field]] {
+			frm = append(frm, v)
+		}
+	}
+	return frm
+}
+
 // FilterFunc fileter by func (like jq)
 // return true will be append
 func (rm RowsMap) FilterFunc(f func(RowMap) bool) RowsMap {
@@ -405,11 +421,11 @@ func (rm RowsMap) WarpByField(field string) RowsWraps {
 
 // MultiWarp multi warp
 type MultiWarp struct {
-	ID    string      `json:"id"`
-	Name  string      `json:"name"`
-	Vals  []MultiWarp `json:"vals"`
-	preID string
-	// tailID string
+	ID     string      `json:"id"`
+	Name   string      `json:"name"`
+	Vals   []MultiWarp `json:"vals"`
+	preID  string
+	tailID string
 }
 
 // MultiWarpByField multi level warp by field
@@ -434,16 +450,15 @@ func (rm RowsMap) MultiWarpByField(fields ...string) []MultiWarp {
 		return []MultiWarp{}
 	}
 
-	// fields最前面和最后面是没有的。
 	fields = append(fields, "", "")
 	fields = append([]string{"", ""}, fields...)
 
-	levels := make([][]MultiWarp, length/2) // 层数
+	levels := make([][]MultiWarp, length/2)
 
 	for _, r := range rm {
-		// 每一行处理所有层
 		levelIdx := len(levels) - 1
 		for i := len(fields) - 4; i >= 2; i -= 2 {
+			// fmt.Println("i,levelIdx:", i, levelIdx)
 			isAppend := false
 			// 不需要ID为0的项，认为不存在。
 			if r[fields[i]] == "0" || r[fields[i]] == "" {
@@ -452,21 +467,35 @@ func (rm RowsMap) MultiWarpByField(fields ...string) []MultiWarp {
 				levelIdx--
 				continue
 			}
-			var preID string
-			tmpPre := i - 2
-			for tmpPre >= 0 {
-				preID += r[fields[tmpPre]] + "-"
+			ps := []string{}
+			for j := 2; j < i; j += 2 {
+				ps = append(ps, r[fields[j]])
+			}
+			var pre string //preID: r[fields[i-2]],
+			pre = strings.Join(ps, "-")
+			var tail string
+			if pre == "" {
+				tail = r[fields[i]]
+			} else {
+				tail = pre + "-" + r[fields[i]]
 			}
 			newWarp := MultiWarp{
-				ID:    r[fields[i]],
-				Name:  r[fields[i+1]],
-				preID: preID,
-				// tailID: r[fields[i+2]],
-				Vals: make([]MultiWarp, 0),
+				ID:     r[fields[i]],
+				Name:   r[fields[i+1]],
+				preID:  pre,
+				tailID: tail,
+				Vals:   make([]MultiWarp, 0),
 			}
+
+			// fmt.Println(levelIdx, pre, tail, fmt.Sprintf("i:%d", i), fields[i])
+			// newWarp := MultiWarp{ID: r[fields[i]], Name: r[fields[i+1]], preID: r[fields[i-2]], tailID: r[fields[i+2]], Vals: make([]MultiWarp, 0)}
 			// fmt.Println(r, stringify(newWarp))
 			// newWarp := MultiWarp{ID: r[fields[i]], Name: r[fields[i+1]], preID: r[fields[i-2]], tailID: r[fields[i+2]]}
 			for _, level := range levels[levelIdx] {
+				if pre == tail {
+					isAppend = true
+					break
+				}
 				if level.ID == newWarp.ID && level.preID == newWarp.preID {
 					// 只要父节点和本身节点是一样的话，就是重复的了。
 					// 因为这棵树是从前面（idx=0）开始的，所以不能以同一个尾判断是同一个，同级下也可能有相同的尾。
@@ -485,13 +514,14 @@ func (rm RowsMap) MultiWarpByField(fields ...string) []MultiWarp {
 	// for i := 0; i < len(levels); i++ {
 	// 	fmt.Println(i, len(levels[i]), stringify(levels[i]))
 	// }
+
 	// 从倒数第二个level开始向前合并
 	for i := len(levels) - 2; i >= 0; i-- {
 		for lIdx := 0; lIdx < len(levels[i]); lIdx++ {
 			for cIdx := 0; cIdx < len(levels[i+1]); cIdx++ {
 				// 如果前面的尾巴是
 				// tailID其实在这里是没有用的，因为不同的tailID,可能已经被除重了。
-				if levels[i][lIdx].ID == levels[i+1][cIdx].preID {
+				if levels[i][lIdx].tailID == levels[i+1][cIdx].preID {
 					levels[i][lIdx].Vals = append(levels[i][lIdx].Vals, levels[i+1][cIdx])
 				} else {
 					// not match
