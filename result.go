@@ -315,10 +315,10 @@ func (rm RowsMap) FilterIn(field string, equals []string) RowsMap {
 
 // FilterFunc fileter by func (like jq)
 // return true will be append
-func (rm RowsMap) FilterFunc(f func(RowMap) bool) RowsMap {
+func (rm RowsMap) FilterFunc(equalF func(RowMap) bool) RowsMap {
 	frm := RowsMap{}
 	for _, v := range rm {
-		if f(v) {
+		if equalF(v) {
 			frm = append(frm, v)
 		}
 	}
