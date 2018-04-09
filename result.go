@@ -685,6 +685,18 @@ func (rm RowMapInterface) String(field string) string {
 	return str
 }
 
+// Int get int field from RowMapInterface
+func (rm RowMapInterface) Int(field string) int {
+	str, ok := rm[field].(string)
+	if ok {
+		i, _ := strconv.Atoi(str)
+		return i
+	}
+	str = fmt.Sprintf("%v", rm[field])
+	i, _ := strconv.Atoi(str)
+	return i
+}
+
 // RowMap convert RowMapInterface to RowMap
 func (rm RowMapInterface) RowMap() RowMap {
 	r := RowMap{}
