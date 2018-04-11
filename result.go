@@ -369,12 +369,42 @@ func (rm RowsMap) EachMod(f func(RowMap)) RowsMap {
 }
 
 // GroupByField group by field
-func (rm RowsMap) GroupByField(field string) map[string][]RowMap {
+// func (rm RowsMap) GroupByField(field string) map[string][]RowMap {
+// 	gm := map[string][]RowMap{}
+// 	for _, v := range rm {
+// 		gm[v[field]] = append(gm[v[field]], v)
+// 	}
+// 	return gm
+// }
+
+// RowsMapGroup 用于对一个字段进行分组
+type RowsMapGroup struct {
+	Key  string   `json:"key"`
+	Len  int      `json:"len"`
+	Vals []RowMap `json:"vals"`
+}
+
+// GroupByField 用field字段进行分组
+func (rm RowsMap) GroupByField(field string) []RowsMapGroup {
 	gm := map[string][]RowMap{}
+	orders := []string{}
 	for _, v := range rm {
+		_, ok := gm[v[field]]
+		if !ok {
+			orders = append(orders, v[field])
+		}
 		gm[v[field]] = append(gm[v[field]], v)
 	}
-	return gm
+	rmg := make([]RowsMapGroup, 0, len(orders))
+	for _, key := range orders {
+		tmp := RowsMapGroup{
+			Key:  key,
+			Vals: gm[key],
+		}
+		tmp.Len = len(tmp.Vals)
+		rmg = append(rmg, tmp)
+	}
+	return rmg
 }
 
 // RowsWrap WarpByField
