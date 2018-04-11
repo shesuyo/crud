@@ -244,6 +244,7 @@ func (t *Table) WhereStartEndDay(field, startDay, endDay string) *Table {
 	if startDay != "" && endDay == "" {
 		endDay = startDay
 	}
+	// return t.Clone().Search.Where("DATE_FORMAT("+field+",'%Y-%m-%d') >= ? AND DATE_FORMAT("+field+",'%Y-%m-%d') <= ?", startDay, endDay).table
 	return t.Clone().Search.Where("DATE_FORMAT("+field+",'%Y-%m-%d') >= ? AND DATE_FORMAT("+field+",'%Y-%m-%d') <= ?", startDay, endDay).table
 }
 
@@ -274,18 +275,19 @@ func (t *Table) WhereStartEndTime(field, startTime, endTime string) *Table {
 }
 
 // WhereToday DATE_FORMAT(field, '%Y-%m-%d') = {today}
+// (field >= '2017-01-01 00:00:00' AND %s < '2017-01-02 00:00:00' )
 func (t *Table) WhereToday(field string) *Table {
-	return t.Clone().Search.Where("DATE_FORMAT("+field+",'%Y-%m-%d') = ?", time.Now().Format("2006-01-02")).table
+	return t.WhereDay(field, time.Now().Format("2006-01-02"))
 }
 
 // WhereDay DATE_FORMAT(field, '%Y-%m-%d') = day
 func (t *Table) WhereDay(field, day string) *Table {
-	return t.Clone().Search.Where("DATE_FORMAT("+field+",'%Y-%m-%d') = ?", day).table
+	return t.Clone().Search.Where(WhereTimeParse(field, day, 0, 0, 1)).table
 }
 
 // WhereMonth DATE_FORMAT(field, '%Y-%m') = month
 func (t *Table) WhereMonth(field, month string) *Table {
-	return t.Clone().Search.Where("DATE_FORMAT("+field+",'%Y-%m') = ?", month).table
+	return t.Clone().Search.Where(WhereTimeParse(field, month, 0, 1, 0)).table
 }
 
 // WhereBeforeToday DATE_FORMAT(field, '%Y-%m-%d') < {today}

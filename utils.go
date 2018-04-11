@@ -2,9 +2,11 @@ package crud
 
 import (
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"strings"
 	"sync"
+	"time"
 )
 
 var (
@@ -165,4 +167,15 @@ func copyMap(m map[string]interface{}) map[string]interface{} {
 		newm[k] = v
 	}
 	return newm
+}
+
+// WhereTimeParse 将时间段转换成对应SQL
+func WhereTimeParse(field, ts string, years, months, days int) string {
+	// (createdtime >= '2018-01-01 00:00:00' AND createdtime < '2018-01-02 00:00:00')
+	var a, b, format string
+	format = "2006-01-02 15:04:05"[:len(ts)]
+	t, _ := time.ParseInLocation(format, ts, time.Local)
+	a = t.Format("2006-01-02 15:04:05")
+	b = t.AddDate(years, months, days).Format("2006-01-02 15:04:05")
+	return fmt.Sprintf("(%s >= '%s' AND %s < '%s')", field, a, field, b)
 }
