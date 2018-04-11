@@ -64,7 +64,7 @@ func (s *Search) Fields(args ...string) *Search {
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "$C", "$c":
-			args[i] = "COUNT(*) AS total"
+			args[i] = "COUNT(1) AS total"
 		}
 	}
 	s.fields = append(s.fields, args...)
