@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unsafe"
 )
 
 var (
@@ -178,4 +179,12 @@ func WhereTimeParse(field, ts string, years, months, days int) string {
 	a = t.Format("2006-01-02 15:04:05")
 	b = t.AddDate(years, months, days).Format("2006-01-02 15:04:05")
 	return fmt.Sprintf("(%s >= '%s' AND %s < '%s')", field, a, field, b)
+}
+
+func byteString(b []byte) string {
+	return *(*string)(unsafe.Pointer(&b))
+}
+
+func stringByte(s string) []byte {
+	return *(*[]byte)(unsafe.Pointer(&s))
 }

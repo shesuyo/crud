@@ -1,6 +1,7 @@
 package crud
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
 	"reflect"
@@ -175,6 +176,26 @@ type (
 	//RowMapInterface 单行
 	RowMapInterface map[string]interface{}
 )
+
+func (rm RowMap) MarshalJSON() ([]byte, error) {
+	sb := bytes.NewBuffer(make([]byte, 0, 1024))
+	sb.WriteByte('{')
+	l := len(rm)
+	n := 0
+	for k, v := range rm {
+		sb.WriteByte('"')
+		sb.Write(stringByte(k))
+		sb.Write([]byte{'"', ':', '"'})
+		sb.Write(stringByte(v))
+		sb.WriteByte('"')
+		n++
+		if n < l {
+			sb.WriteByte(',')
+		}
+	}
+	sb.WriteByte('}')
+	return sb.Bytes(), nil
+}
 
 // Bool return singel bool
 func (rm RowMap) Bool(field ...string) bool {
