@@ -306,11 +306,17 @@ func (t *Table) WhereLike(field, like string) *Table {
 
 // WhereLikeLeft field LIKE %like
 func (t *Table) WhereLikeLeft(field, like string) *Table {
+	if like == "" {
+		return t
+	}
 	return t.Clone().Search.Where(field+" LIKE ?", "%"+like).table
 }
 
 // WhereLikeRight field LIKE like%
 func (t *Table) WhereLikeRight(field, like string) *Table {
+	if like == "" {
+		return t
+	}
 	return t.Clone().Search.Where(field+" LIKE ?", like+"%").table
 }
 

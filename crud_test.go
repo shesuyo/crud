@@ -1,8 +1,11 @@
 package crud
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 	"time"
+	"unsafe"
 	// "github.com/jinzhu/gorm"
 	// "github.com/mosesed/pluto/driver/mysql"
 	// _ "github.com/go-sql-driver/mysql" //
@@ -123,4 +126,72 @@ func TestNewCRUD(t *testing.T) {
 	// })
 	// fmt.Println(crud.tableNames)
 	//crud.Create(&Task{})
+}
+
+// Benchmark_MapJSON-4   	  300000	      4910 ns/op	    1936 B/op	      29 allocs/op
+func Benchmark_MapJSON(b *testing.B) {
+	m := map[string]string{
+		"a":       "asd",
+		"b":       "asd",
+		"e":       "asdasdasd",
+		"f":       "asdasdasdqw",
+		"g":       "asdsad3q4123",
+		"h":       "中水电费噶多少分无人区",
+		"asd":     "水电费和绿色案件人情味",
+		"iemzi":   "骄傲去年初前面那阿斯顿发帖我仍股份认为镉污染",
+		"asdqw12": "asd324236gsdf456152e1sda5f1dsa5f1sda5f15sdaf1asd",
+		"happy":   "to be or not to be ,that's a question!",
+	}
+	for i := 0; i < b.N; i++ {
+		bs, _ := json.Marshal(m)
+		_ = bs
+	}
+}
+
+func Benchmark_MapJSONSelf(b *testing.B) {
+	m := map[string]string{
+		"a":       "asd",
+		"b":       "asd",
+		"e":       "asdasdasd",
+		"f":       "asdasdasdqw",
+		"g":       "asdsad3q4123",
+		"h":       "中水电费噶多少分无人区",
+		"asd":     "水电费和绿色案件人情味",
+		"iemzi":   "骄傲去年初前面那阿斯顿发帖我仍股份认为镉污染",
+		"asdqw12": "asd324236gsdf456152e1sda5f1dsa5f1sda5f15sdaf1asd",
+		"happy":   "to be or not to be ,that's a question!",
+	}
+	for i := 0; i < b.N; i++ {
+		bs := mapMarshal(m)
+		_ = bs
+	}
+}
+
+func byteString(b []byte) string {
+	return *(*string)(unsafe.Pointer(&b))
+}
+
+func stringByte(s string) []byte {
+	return *(*[]byte)(unsafe.Pointer(&s))
+}
+
+// // convert b to string without copy
+// func BytesString(b []byte) String {
+// 	return *(*String)(unsafe.Pointer(&b))
+// }
+
+func mapMarshal(m map[string]string) []byte {
+	sb := strings.Builder{}
+	sb.WriteString("{")
+	l := len(m)
+	n := 0
+	for k, v := range m {
+		sb.WriteString(`"` + k + `":"` + v + `"`)
+		n++
+		if n < l {
+			sb.WriteString(",")
+		}
+	}
+	sb.WriteString("}")
+	return stringByte(sb.String())
 }
