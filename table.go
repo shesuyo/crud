@@ -177,12 +177,15 @@ func (t *Table) Update(mo map[string]interface{}, keys ...string) error {
 	return nil
 }
 
-//CreateOrUpdate 创建或者更新
+// CreateOrUpdate 创建或者更新
 func (t *Table) CreateOrUpdate(m map[string]interface{}, keys ...string) error {
 	_, err := t.Create(m, keys...)
 	if err != nil {
 		if err == ErrInsertRepeat {
-			return t.Update(m, keys...)
+			if len(m) > len(keys) {
+				return t.Update(m, keys...)
+			}
+			return nil
 		}
 		return err
 	}
