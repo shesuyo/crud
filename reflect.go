@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"reflect"
 	"strings"
+	"sync"
 )
 
 //
@@ -35,6 +36,7 @@ const (
 
 //DBColums 多列
 var DBColums map[string]Column
+var dbcM sync.Mutex
 
 func init() {
 	DBColums = make(map[string]Column)

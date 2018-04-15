@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"sync"
 
 	_ "github.com/go-sql-driver/mysql" //
 )
@@ -42,7 +43,8 @@ type DataBase struct {
 	dataSourceName string
 	db             *sql.DB
 
-	render Render //crud本身不渲染数据，通过其他地方传入一个渲染的函数，然后渲染都是那边处理。
+	mm     *sync.Mutex // 用于getColumns的写锁
+	render Render      //crud本身不渲染数据，通过其他地方传入一个渲染的函数，然后渲染都是那边处理。
 }
 
 // NewDataBase 创建一个新的数据库链接
@@ -58,6 +60,7 @@ func NewDataBase(dataSourceName string, render ...Render) (*DataBase, error) {
 		tableColumns:   make(map[string]Columns),
 		dataSourceName: dataSourceName,
 		db:             db,
+		mm:             new(sync.Mutex),
 		render: func(w http.ResponseWriter, err error, data ...interface{}) {
 			if len(render) == 1 {
 				if render[0] != nil {
@@ -67,9 +70,14 @@ func NewDataBase(dataSourceName string, render ...Render) (*DataBase, error) {
 		},
 	}
 
+	wg := sync.WaitGroup{}
 	for _, tableMap := range crud.Query("SHOW TABLES").RowsMap() {
 		for _, table := range tableMap {
-			crud.getColumns(table)
+			wg.Add(1)
+			go func(table string) {
+				crud.getColumns(table)
+				wg.Done()
+			}(table)
 		}
 	}
 	return crud, nil
@@ -126,9 +134,13 @@ func (db *DataBase) getColumns(tableName string) Columns {
 			DataType:   v["DATA_TYPE"],
 			IsNullAble: v["IS_NULLABLE"] == "YES",
 		}
+		dbcM.Lock()
 		DBColums[v["COLUMN_NAME"]] = cols[v["COLUMN_NAME"]]
+		dbcM.Unlock()
 	}
+	db.mm.Lock()
 	db.tableColumns[tableName] = cols
+	db.mm.Unlock()
 	return cols
 }
 

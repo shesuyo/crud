@@ -182,6 +182,7 @@ func (t *Table) CreateOrUpdate(m map[string]interface{}, keys ...string) error {
 	_, err := t.Create(m, keys...)
 	if err != nil {
 		if err == ErrInsertRepeat {
+			// 在len(map) <= len(keys)的时候可以不用执行更新操作，因为没有任何东西需要更新。
 			if len(m) > len(keys) {
 				return t.Update(m, keys...)
 			}
