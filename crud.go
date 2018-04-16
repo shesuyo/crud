@@ -80,6 +80,7 @@ func NewDataBase(dataSourceName string, render ...Render) (*DataBase, error) {
 			}(table)
 		}
 	}
+	wg.Wait()
 	return crud, nil
 }
 
