@@ -186,10 +186,13 @@ func (rm RowMap) MarshalJSON() ([]byte, error) {
 		sb.WriteByte('"')
 		sb.Write(stringByte(k))
 		sb.Write([]byte{'"', ':', '"'})
+		if strings.Contains(v, "\\") {
+			v = strings.Replace(v, "\\", "\\\\", -1)
+		}
 		if strings.Contains(v, `"`) {
-			sb.Write(stringByte(strings.Replace(v, `"`, `\"`, -1)))
+			sb.Write([]byte(strings.Replace(v, `"`, `\"`, -1)))
 		} else {
-			sb.Write(stringByte(v))
+			sb.Write([]byte(v))
 		}
 		sb.WriteByte('"')
 		n++
