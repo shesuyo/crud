@@ -53,8 +53,8 @@ func NewDataBase(dataSourceName string, render ...Render) (*DataBase, error) {
 	if err != nil {
 		return nil, err
 	}
-	db.SetMaxIdleConns(20)
-	db.SetMaxOpenConns(20)
+	db.SetMaxIdleConns(10)
+	db.SetMaxOpenConns(10)
 	crud := &DataBase{
 		debug:          false,
 		tableColumns:   make(map[string]Columns),
@@ -70,17 +70,18 @@ func NewDataBase(dataSourceName string, render ...Render) (*DataBase, error) {
 		},
 	}
 
-	wg := sync.WaitGroup{}
+	// wg := sync.WaitGroup{}
 	for _, tableMap := range crud.Query("SHOW TABLES").RowsMap() {
 		for _, table := range tableMap {
-			wg.Add(1)
-			go func(table string) {
-				crud.getColumns(table)
-				wg.Done()
-			}(table)
+			// wg.Add(1)
+			// go func(table string) {
+			// 	crud.getColumns(table)
+			// 	wg.Done()
+			// }(table)
+			crud.getColumns(table)
 		}
 	}
-	wg.Wait()
+	// wg.Wait()
 	return crud, nil
 }
 
