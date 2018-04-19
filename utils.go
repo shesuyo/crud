@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -187,4 +188,44 @@ func byteString(b []byte) string {
 
 func stringByte(s string) []byte {
 	return *(*[]byte)(unsafe.Pointer(&s))
+}
+
+// String 将传入的值转换成字符串
+func String(v interface{}) string {
+	var s string
+	switch v := v.(type) {
+	case int:
+		s = strconv.Itoa(v)
+	case int64:
+		s = strconv.Itoa(int(v))
+	default:
+		s = fmt.Sprintf("%v", v)
+	}
+	return s
+}
+
+// Int 将传入的值转换成int
+func Int(v interface{}) int {
+	var i int
+	switch v := v.(type) {
+	case string:
+		i, _ = strconv.Atoi(v)
+	// 一个case多个值，就无法确认是什么类型了，就成了interface{}，所以要分开写。
+	case int64:
+		i = int(v)
+	// 不实现除了uint64之后的无符号
+	case uint64:
+		i = int(v)
+	case int:
+		i = v
+	case int8:
+		i = int(v)
+	case int16:
+		i = int(v)
+	case int32:
+		i = int(v)
+	default:
+		i, _ = strconv.Atoi(fmt.Sprintf("%v", v))
+	}
+	return i
 }

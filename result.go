@@ -129,13 +129,13 @@ func (r *SQLRows) RowsMapInterface() RowsMapInterface {
 			用于放到底层去取数据的容器
 			type RawBytes []byte
 		*/
-		var b sql.RawBytes = []byte("abc")
-		_ = string(b)
+		// var b sql.RawBytes = []byte("abc")
+		// _ = string(b)
 		containers := make([]interface{}, 0, len(cols))
 		for i := 0; i < cap(containers); i++ {
 			col := DBColums[cols[i]]
 			switch col.DataType {
-			case "int", "tinyint", "smallint", "mediumint", "integer":
+			case "int", "tinyint", "smallint", "mediumint", "unsigned mediumint", "integer":
 				var v int
 				containers = append(containers, &v)
 			case "varchar", "bigint", "timestamp":
@@ -930,7 +930,15 @@ func (r *SQLRows) Find(v interface{}) error {
 
 func (r *SQLRows) setValue(v reflect.Value, i interface{}) {
 	if i != nil && v.Interface() != nil {
-		v.Set(reflect.ValueOf(i))
+		switch v.Kind() {
+		case reflect.Int:
+			v.Set(reflect.ValueOf(Int(i)))
+		case reflect.String:
+			v.Set(reflect.ValueOf(String(i)))
+		default:
+			v.Set(reflect.ValueOf(i))
+		}
+
 	}
 }
 
