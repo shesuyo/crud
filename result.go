@@ -1,7 +1,6 @@
 package crud
 
 import (
-	"bytes"
 	"database/sql"
 	"fmt"
 	"reflect"
@@ -177,32 +176,33 @@ type (
 	RowMapInterface map[string]interface{}
 )
 
-func (rm RowMap) MarshalJSON() ([]byte, error) {
-	sb := bytes.NewBuffer(make([]byte, 0, 1024))
-	sb.WriteByte('{')
-	l := len(rm)
-	n := 0
-	for k, v := range rm {
-		sb.WriteByte('"')
-		sb.Write(stringByte(k))
-		sb.Write([]byte{'"', ':', '"'})
-		if strings.Contains(v, "\\") {
-			v = strings.Replace(v, "\\", "\\\\", -1)
-		}
-		if strings.Contains(v, `"`) {
-			sb.Write([]byte(strings.Replace(v, `"`, `\"`, -1)))
-		} else {
-			sb.Write([]byte(v))
-		}
-		sb.WriteByte('"')
-		n++
-		if n < l {
-			sb.WriteByte(',')
-		}
-	}
-	sb.WriteByte('}')
-	return sb.Bytes(), nil
-}
+// MarshalJSON 实现MarshalJSON
+// func (rm RowMap) MarshalJSON() ([]byte, error) {
+// 	sb := bytes.NewBuffer(make([]byte, 0, 1024))
+// 	sb.WriteByte('{')
+// 	l := len(rm)
+// 	n := 0
+// 	for k, v := range rm {
+// 		sb.WriteByte('"')
+// 		sb.Write(stringByte(k))
+// 		sb.Write([]byte{'"', ':', '"'})
+// 		if strings.Contains(v, "\\") {
+// 			v = strings.Replace(v, "\\", "\\\\", -1)
+// 		}
+// 		if strings.Contains(v, `"`) {
+// 			sb.Write([]byte(strings.Replace(v, `"`, `\"`, -1)))
+// 		} else {
+// 			sb.Write([]byte(v))
+// 		}
+// 		sb.WriteByte('"')
+// 		n++
+// 		if n < l {
+// 			sb.WriteByte(',')
+// 		}
+// 	}
+// 	sb.WriteByte('}')
+// 	return sb.Bytes(), nil
+// }
 
 // Bool return singel bool
 func (rm RowMap) Bool(field ...string) bool {
