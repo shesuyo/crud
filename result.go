@@ -288,6 +288,19 @@ func (rm RowMap) Float64(field string, def ...float64) float64 {
 	return 0
 }
 
+// Copy 复制一份
+func (rm RowsMap) Copy() RowsMap {
+	nrm := make(RowsMap, len(rm))
+	for _, r := range rm {
+		nr := RowMap{}
+		for k, v := range r {
+			nr[k] = v
+		}
+		nrm = append(nrm, nr)
+	}
+	return nrm
+}
+
 // Sum Sum
 func (rm RowsMap) Sum(field string) int {
 	sum := 0
@@ -315,6 +328,15 @@ func (rm RowsMap) Interface() RowsMapInterface {
 	return rmi
 }
 
+// MapIndex 按照指定field划分成map[string]RowMap
+func (rm RowsMap) MapIndex(field string) map[string]RowMap {
+	sr := make(map[string]RowMap, len(rm))
+	for _, r := range rm {
+		sr[r[field]] = r
+	}
+	return sr
+}
+
 // Filter 过滤指定字段
 func (rm RowsMap) Filter(field, equal string) RowsMap {
 	frm := RowsMap{}
@@ -335,6 +357,21 @@ func (rm RowsMap) FilterIn(field string, equals []string) RowsMap {
 	frm := RowsMap{}
 	for _, v := range rm {
 		if em[v[field]] {
+			frm = append(frm, v)
+		}
+	}
+	return frm
+}
+
+// FilterNotIn 指定字段在数组里面皆不会被挑选出来
+func (rm RowsMap) FilterNotIn(field string, equals []string) RowsMap {
+	em := make(map[string]bool, len(equals))
+	for _, e := range equals {
+		em[e] = true
+	}
+	frm := RowsMap{}
+	for _, v := range rm {
+		if !em[v[field]] {
 			frm = append(frm, v)
 		}
 	}
@@ -625,7 +662,7 @@ func (rm RowsMap) RowField(val, field string) RowMap {
 			return v
 		}
 	}
-	return nil
+	return RowMap{}
 }
 
 // RowsField 根据字段找出多列
