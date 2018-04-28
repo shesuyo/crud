@@ -13,11 +13,16 @@ type Table struct {
 	*DataBase
 	*Search
 	tableName string
+	Columns   Columns
 }
 
 // Name 返回名称
 func (t *Table) Name() string {
 	return t.tableName
+}
+
+func (t *Table) HaveColumn(key string) bool {
+	return t.Columns.HaveColumn(key)
 }
 
 //
@@ -134,12 +139,12 @@ func (t *Table) Reads(m map[string]interface{}) RowsMap {
 	return t.Query(fmt.Sprintf("SELECT * FROM %s WHERE %s", t.tableName, strings.Join(ks, "AND")), vs...).RowsMap()
 }
 
-func (t *Table) Read(m map[string]interface{}) map[string]string {
+func (t *Table) Read(m map[string]interface{}) RowMap {
 	rs := t.Reads(m)
 	if len(rs) > 0 {
 		return rs[0]
 	}
-	return map[string]string{}
+	return RowMap{}
 }
 
 // Update 更新

@@ -38,13 +38,16 @@ type Render func(w http.ResponseWriter, err error, data ...interface{})
 
 // DataBase 数据库链接
 type DataBase struct {
-	debug          bool
+	debug bool
+
+	Schema         string //数据库表名
 	tableColumns   map[string]Columns
 	dataSourceName string
 	db             *sql.DB
 
-	mm     *sync.Mutex // 用于getColumns的写锁
-	render Render      //crud本身不渲染数据，通过其他地方传入一个渲染的函数，然后渲染都是那边处理。
+	mm *sync.Mutex // 用于getColumns的写锁
+
+	render Render //crud本身不渲染数据，通过其他地方传入一个渲染的函数，然后渲染都是那边处理。
 }
 
 // NewDataBase 创建一个新的数据库链接
@@ -70,18 +73,31 @@ func NewDataBase(dataSourceName string, render ...Render) (*DataBase, error) {
 		},
 	}
 
-	// wg := sync.WaitGroup{}
-	for _, tableMap := range crud.Query("SHOW TABLES").RowsMap() {
-		for _, table := range tableMap {
-			// wg.Add(1)
-			// go func(table string) {
-			// 	crud.getColumns(table)
-			// 	wg.Done()
-			// }(table)
-			crud.getColumns(table)
-		}
+	crud.Schema = crud.Query("SELECT DATABASE()").String()
+	if crud.Schema == "" {
+		log.Println("FBI WARNING: 这是一个没有选择数据库的链接。")
 	}
-	// wg.Wait()
+	tables := crud.Query("SELECT TABLE_SCHEMA,TABLE_NAME,COLUMN_NAME,COLUMN_COMMENT,COLUMN_TYPE,DATA_TYPE,IS_NULLABLE FROM information_schema.`COLUMNS` WHERE TABLE_SCHEMA = ?", crud.Schema).RowsMap().MapIndexs("TABLE_NAME")
+
+	for tableName, cols := range tables {
+		cm := make(map[string]Column)
+		for _, v := range cols {
+			cm[v["COLUMN_NAME"]] = Column{
+				Schema:     v["TABLE_SCHEMA"],
+				Table:      v["TABLE_NAME"],
+				Name:       v["COLUMN_NAME"],
+				Comment:    v["COLUMN_COMMENT"],
+				ColumnType: v["COLUMN_TYPE"],
+				DataType:   v["DATA_TYPE"],
+				IsNullAble: v["IS_NULLABLE"] == "YES",
+			}
+			// dbcM.Lock()
+			// DBColums[v["COLUMN_NAME"]] = cm[v["COLUMN_NAME"]]
+			// dbcM.Unlock()
+		}
+		crud.tableColumns[tableName] = cm
+	}
+
 	return crud, nil
 }
 
@@ -148,6 +164,9 @@ func (db *DataBase) getColumns(tableName string) Columns {
 
 // Table 返回一个Table
 func (db *DataBase) Table(tableName string) *Table {
+	if !db.HaveTable(tableName) {
+		panic("表" + tableName + "不存在！")
+	}
 	table := new(Table)
 	table.DataBase = db
 	table.tableName = tableName
@@ -155,6 +174,7 @@ func (db *DataBase) Table(tableName string) *Table {
 		table:     table,
 		tableName: tableName,
 	}
+	table.Columns = db.tableColumns[tableName]
 	return table
 }
 

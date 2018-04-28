@@ -337,6 +337,15 @@ func (rm RowsMap) MapIndex(field string) map[string]RowMap {
 	return sr
 }
 
+// MapIndexs 按照指定field划分成map[string]RowsMap
+func (rm RowsMap) MapIndexs(field string) map[string]RowsMap {
+	sr := make(map[string]RowsMap, len(rm))
+	for _, r := range rm {
+		sr[r[field]] = append(sr[r[field]], r)
+	}
+	return sr
+}
+
 // Filter 过滤指定字段
 func (rm RowsMap) Filter(field, equal string) RowsMap {
 	frm := RowsMap{}
@@ -361,6 +370,19 @@ func (rm RowsMap) FilterIn(field string, equals []string) RowsMap {
 		}
 	}
 	return frm
+}
+
+// RowsMap 返回RowsMap的长度
+func (rm RowsMap) Len() int {
+	return len(rm)
+}
+
+// First 返回RowsMap的第一个元素，如果没有则返回空RowMap
+func (rm RowsMap) First() RowMap {
+	if len(rm) > 0 {
+		return rm[0]
+	}
+	return RowMap{}
 }
 
 // FilterNotIn 指定字段在数组里面皆不会被挑选出来
