@@ -71,7 +71,7 @@ func (r *SQLRows) PlugeInt(cn string) []int {
 		if ok {
 			out = append(out, i)
 		} else {
-			return []int{}
+			out = append(out, Int(v[cn]))
 		}
 	}
 	return out
@@ -89,7 +89,7 @@ func (r *SQLRows) PlugeStinrg(cn string) []string {
 		if ok {
 			out = append(out, i)
 		} else {
-			return []string{}
+			out = append(out, String(v[cn]))
 		}
 	}
 	return out
@@ -97,9 +97,9 @@ func (r *SQLRows) PlugeStinrg(cn string) []string {
 
 // RowMapInterface 返回map[string]interface{} 只有一列
 func (r *SQLRows) RowMapInterface() RowMapInterface {
-	raws := r.RowsMapInterface()
-	if len(raws) >= 1 {
-		return raws[0]
+	rows := r.RowsMapInterface()
+	if len(rows) >= 1 {
+		return rows[0]
 	}
 	return make(map[string]interface{}, 0)
 }
@@ -110,10 +110,25 @@ func (r *SQLRows) RowMapInterface() RowMapInterface {
 	这里有浪费tinyint->int8[-128,127] unsigned tinyint uint8[0,255]，这里直接用int16[-32768,32767]
 */
 func (r *SQLRows) RowsMapInterface() RowsMapInterface {
-	rs := []RowMapInterface{}
+	// _st := time.Now()
+	// defer func() {
+	// 	fmt.Println(time.Now().Sub(_st))
+	// }()
+	rs := RowsMapInterface{}
 	if r.err != nil {
 		return rs
 	}
+	// ct, err := r.rows.ColumnTypes()
+	// fmt.Println(err)
+	// for _, v := range ct {
+	// 	fmt.Println(wtf.JSONStringify(v))
+	// }
+
+	// fmt.Println(wtf.JSONStringify(r.rows))
+	// fmt.Println(r.rows)
+
+	// https://segmentfault.com/a/1190000003036452
+
 	cols, err := r.rows.Columns()
 	if err != nil {
 		return rs
@@ -134,7 +149,7 @@ func (r *SQLRows) RowsMapInterface() RowsMapInterface {
 		for i := 0; i < cap(containers); i++ {
 			col := DBColums[cols[i]]
 			switch col.DataType {
-			case "int", "tinyint", "smallint", "mediumint", "unsigned mediumint", "integer":
+			case "int", "tinyint", "smallint", "mediumint", "integer":
 				var v int
 				containers = append(containers, &v)
 			case "varchar", "bigint", "timestamp":
