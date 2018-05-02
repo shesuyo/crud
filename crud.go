@@ -91,9 +91,6 @@ func NewDataBase(dataSourceName string, render ...Render) (*DataBase, error) {
 				DataType:   v["DATA_TYPE"],
 				IsNullAble: v["IS_NULLABLE"] == "YES",
 			}
-			// dbcM.Lock()
-			// DBColums[v["COLUMN_NAME"]] = cm[v["COLUMN_NAME"]]
-			// dbcM.Unlock()
 		}
 		crud.tableColumns[tableName] = cm
 	}

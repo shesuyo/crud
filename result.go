@@ -387,7 +387,7 @@ func (rm RowsMap) FilterIn(field string, equals []string) RowsMap {
 	return frm
 }
 
-// RowsMap 返回RowsMap的长度
+// Len 返回RowsMap的长度
 func (rm RowsMap) Len() int {
 	return len(rm)
 }

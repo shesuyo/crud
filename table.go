@@ -21,31 +21,20 @@ func (t *Table) Name() string {
 	return t.tableName
 }
 
+// HaveColumn 是否有这个列
 func (t *Table) HaveColumn(key string) bool {
 	return t.Columns.HaveColumn(key)
 }
 
-//
-// All 返回这张表所有数据
-// func (t *Table) All() RowsMap {
-// 	return t.Query("SELECT * FROM " + t.tableName).RowsMap()
-// }
-
-// // Count 返回表有多少条数据
-// func (t *Table) Count() int {
-// 	return t.Query("SELECT COUNT(*) FROM " + t.tableName).Int()
-
-// }
-
 // UpdateTime 查找表的更新时间
 func (t *Table) UpdateTime() string {
-	return t.Query("SELECT `UPDATE_TIME` FROM  INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA =(select database()) AND TABLE_NAME = '" + t.tableName + "';").String()
+	return t.Query("SELECT `UPDATE_TIME` FROM  INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?", t.Schema, t.tableName).String()
 
 }
 
 // AutoIncrement 查找表的自增ID的值
 func (t *Table) AutoIncrement() int {
-	return t.Query("SELECT `AUTO_INCREMENT` FROM  INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA =(select database()) AND TABLE_NAME = '" + t.tableName + "';").Int()
+	return t.Query("SELECT `AUTO_INCREMENT` FROM  INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?", t.Schema, t.tableName).Int()
 }
 
 // SetAutoIncrement 设置自动增长ID
@@ -65,7 +54,7 @@ func (t *Table) IDIn(ids ...interface{}) *SQLRows {
 	if len(ids) == 0 {
 		return &SQLRows{}
 	}
-	return t.Query(fmt.Sprintf("SELECT * FROM %s WHERE id in (%s)", t.tableName, argslice(len(ids))), ids...)
+	return t.Query(fmt.Sprintf("SELECT * FROM `%s` WHERE id in (%s)", t.tableName, argslice(len(ids))), ids...)
 }
 
 // Create 创建
