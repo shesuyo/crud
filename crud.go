@@ -165,7 +165,7 @@ func (db *DataBase) getColumns(tableName string) Columns {
 // Table 返回一个Table
 func (db *DataBase) Table(tableName string) *Table {
 	if !db.HaveTable(tableName) {
-		panic("表" + tableName + "不存在！")
+		fmt.Println("FBI WARNING:表" + tableName + "不存在！")
 	}
 	table := new(Table)
 	table.DataBase = db
