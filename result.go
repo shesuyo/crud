@@ -817,6 +817,11 @@ func (rm RowMapInterface) String(field string) string {
 	return str
 }
 
+// Bytes 返回对应值的[]byte
+func (rm RowMapInterface) Bytes(field string) []byte {
+	return []byte(rm.String(field))
+}
+
 // Int get int field from RowMapInterface
 func (rm RowMapInterface) Int(field string) int {
 	str, ok := rm[field].(string)

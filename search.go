@@ -218,6 +218,7 @@ func (s *Search) Parse() (string, []interface{}) {
 // DISTICT XXX.XXX AS aaa
 // XXX.XXX AS aaa
 // COUNT(*) AS total
+// tablename.*
 func (s *Search) warpField(field string) (warpStr string, tablename string, fieldname string) {
 	if strings.Contains(field, " ") {
 		if strings.Contains(field, "AS") {
@@ -244,7 +245,6 @@ func (s *Search) warpField(field string) (warpStr string, tablename string, fiel
 // warpFieldSingel field without space
 // warp xxx OR xxx.xxx OR * COUNT(*)
 func (s *Search) warpFieldSingel(field string) (warpStr string, tablename string, fieldname string) {
-
 	if strings.Contains(field, ".") {
 		sp := strings.Split(field, ".")
 		tablename = sp[0]
@@ -252,10 +252,11 @@ func (s *Search) warpFieldSingel(field string) (warpStr string, tablename string
 		if strings.Contains(field, "`") {
 			warpStr = field
 			return
-		} else if fieldname == "*" {
-			warpStr = "*"
-			return
 		}
+		// } else if fieldname == "*" {
+		// 	warpStr = "*"
+		// 	return
+		// }
 		warpStr = strings.Replace(field, ".", ".`", 1) + "`"
 	} else {
 		// if not x.x,check this table field.
