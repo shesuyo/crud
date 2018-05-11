@@ -243,30 +243,50 @@ func (s *Search) warpField(field string) (warpStr string, tablename string, fiel
 }
 
 // warpFieldSingel field without space
-// warp xxx OR xxx.xxx OR * COUNT(*)
+// warp xxx OR xxx.xxx OR * OR COUNT(*) OR tablename.*
+// 这里的都没有空格的
+// 单个属性 id
+// 表名.属性
+// 表名.*
+// COUNT(1)之类的函数
+//
 func (s *Search) warpFieldSingel(field string) (warpStr string, tablename string, fieldname string) {
 	if strings.Contains(field, ".") {
 		sp := strings.Split(field, ".")
 		tablename = sp[0]
 		fieldname = sp[1]
-		if strings.Contains(field, "`") {
-			warpStr = field
-			return
+		if tablename == "" {
+			tablename = s.tableName
 		}
-		// } else if fieldname == "*" {
-		// 	warpStr = "*"
-		// 	return
-		// }
-		warpStr = strings.Replace(field, ".", ".`", 1) + "`"
+		if fieldname == "" {
+			fieldname = "*"
+		}
+		tablenameCombine := tablename
+		fieldnameCombine := fieldname
+
+		if !strings.Contains(tablename, "`") {
+			tablenameCombine = "`" + tablename + "`"
+		} else {
+			tablename = strings.Replace(tablename, "`", "", -1)
+		}
+
+		if !strings.Contains(fieldname, "`") && fieldname != "*" {
+			fieldnameCombine = "`" + fieldname + "`"
+		} else {
+			fieldname = strings.Replace(fieldname, "`", "", -1)
+		}
+
+		warpStr = tablenameCombine + "." + fieldnameCombine
+
 	} else {
-		// if not x.x,check this table field.
+		// 如果没有.
 		tablename = s.tableName
 		fieldname = field
 		warpStr = field
 		cols := s.table.DataBase.getColumns(tablename)
 		for _, col := range cols {
 			if col.Name == field {
-				warpStr = "`" + field + "`"
+				warpStr = "`" + tablename + "`.`" + field + "`"
 				break
 			}
 		}
