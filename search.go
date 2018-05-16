@@ -219,6 +219,7 @@ func (s *Search) Parse() (string, []interface{}) {
 // XXX.XXX AS aaa
 // COUNT(*) AS total
 // tablename.*
+// DATE_FORMAT(repair.createdtime,'%Y-%m-%d') AS dt
 func (s *Search) warpField(field string) (warpStr string, tablename string, fieldname string) {
 	if strings.Contains(field, " ") {
 		if strings.Contains(field, "AS") {
@@ -249,7 +250,7 @@ func (s *Search) warpField(field string) (warpStr string, tablename string, fiel
 // 表名.属性
 // 表名.*
 // COUNT(1)之类的函数
-//
+// DATE_FORMAT(repair.createdtime,'%Y-%m-%d')
 func (s *Search) warpFieldSingel(field string) (warpStr string, tablename string, fieldname string) {
 	if strings.Contains(field, ".") {
 		sp := strings.Split(field, ".")
@@ -276,7 +277,11 @@ func (s *Search) warpFieldSingel(field string) (warpStr string, tablename string
 			fieldname = strings.Replace(fieldname, "`", "", -1)
 		}
 
-		warpStr = tablenameCombine + "." + fieldnameCombine
+		if s.table.DataBase.HaveTable(tablename) && s.table.DataBase.Table(tablename).HaveColumn(fieldname) {
+			warpStr = tablenameCombine + "." + fieldnameCombine
+		} else {
+			warpStr = field
+		}
 
 	} else {
 		// 如果没有.
@@ -290,16 +295,6 @@ func (s *Search) warpFieldSingel(field string) (warpStr string, tablename string
 				break
 			}
 		}
-		// if strings.Contains(field, "`") {
-		// 	warpStr = field
-		// 	return
-		// }
-		// switch field {
-		// case "*", "COUNT(*)":
-		// 	warpStr = field
-		// default:
-		// 	warpStr = "`" + field + "`"
-		// }
 	}
 	return
 }
