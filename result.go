@@ -430,6 +430,7 @@ func (rm RowsMap) FilterFunc(equalF func(RowMap) bool) RowsMap {
 // EachAddTableString 根据一个字段查找
 // https://github.com/shesuyo/crud/issues/11
 // 第一个是原来的，第二个是新的。
+// rowmapfield tablefield tablefield rowmapfield
 func (rm *RowsMap) EachAddTableString(table *Table, args ...string) {
 	argsLen := len(args)
 	if argsLen < 4 || argsLen%2 != 0 {
