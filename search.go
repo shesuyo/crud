@@ -93,6 +93,16 @@ func (s *Search) In(field string, args ...interface{}) *Search {
 	return s
 }
 
+// NotIn not in 语法
+func (s *Search) NotIn(field string, args ...interface{}) *Search {
+	//not in没有参数的话SQL就会报错
+	if len(args) == 0 {
+		return s
+	}
+	s.whereConditions = append(s.whereConditions, WhereCon{Query: fmt.Sprintf("%s NOT IN (%s)", field, placeholder(len(args))), Args: args})
+	return s
+}
+
 //Joins join语法，自动连表。
 func (s *Search) Joins(tablename string, condition ...string) *Search {
 	if len(condition) == 1 {

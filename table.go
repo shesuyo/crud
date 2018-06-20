@@ -333,6 +333,11 @@ func (t *Table) In(field string, args ...interface{}) *Table {
 	return t.Clone().Search.In(field, args...).table
 }
 
+// NotIn not in
+func (t *Table) NotIn(field string, args ...interface{}) *Table {
+	return t.Clone().Search.NotIn(field, args...).table
+}
+
 // Joins LEFT JOIN
 // with auto join map
 func (t *Table) Joins(query string, args ...string) *Table {
