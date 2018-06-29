@@ -284,7 +284,16 @@ func (db *DataBase) Create(obj interface{}) (int64, error) {
 		}
 	}
 	m := structToMap(v)
-	id, err := db.Table(tableName).Create(m)
+	table := db.Table(tableName)
+	for k, v := range m {
+		if k == "id" && v == "" {
+			delete(m, "id")
+		}
+		if table.Columns[k].DataType == "datetime" && v == "" {
+			delete(m, k)
+		}
+	}
+	id, err := table.Create(m)
 
 	rID := v.Elem().FieldByName("ID")
 	if rID.IsValid() {
