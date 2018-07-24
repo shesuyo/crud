@@ -34,7 +34,7 @@ const (
 	IsDeleted = "is_deleted"
 )
 
-//DBColums 多列
+// DBColums 多列
 var DBColums map[string]Column
 var dbcM sync.Mutex
 
@@ -42,12 +42,12 @@ func init() {
 	DBColums = make(map[string]Column)
 }
 
-//Model 需要有一个将反射封装起来
+// Model 需要有一个将反射封装起来
 type Model struct {
 	fields []Field
 }
 
-//NewModel *Model
+// NewModel *Model
 func NewModel(v interface{}) *Model {
 	val := reflect.ValueOf(v)
 	t := reflect.Indirect(val)
@@ -70,12 +70,12 @@ func NewModel(v interface{}) *Model {
 	return &Model{fields: fs}
 }
 
-//Fields 返回所有的字段
+// Fields 返回所有的字段
 func (m *Model) Fields() []Field {
 	return m.fields
 }
 
-//Field 表中的字段
+// Field 表中的字段
 type Field struct {
 	name       string
 	dbName     string
@@ -88,27 +88,27 @@ type Field struct {
 	isIgnore   bool
 }
 
-//Name 对应的结构体字段名
+// Name 对应的结构体字段名
 func (f *Field) Name() string {
 	return f.name
 }
 
-//DBName 结构体字段名对应的数据库名
+// DBName 结构体字段名对应的数据库名
 func (f *Field) DBName() string {
 	return f.dbName
 }
 
-//Value 值
+// Value 值
 func (f *Field) Value() interface{} {
 	return f.value
 }
 
-//IsBlank 是否为空
+// IsBlank 是否为空
 func (f *Field) IsBlank() bool {
 	return f.isBlank
 }
 
-//IsRequire 是否必须
+// IsRequire 是否必须
 func (f *Field) IsRequire(method string) bool {
 	switch method {
 	case C:
@@ -123,7 +123,7 @@ func (f *Field) IsRequire(method string) bool {
 	return false
 }
 
-//IsIgnore 是否忽略此字段
+// IsIgnore 是否忽略此字段
 func (f *Field) IsIgnore() bool {
 	return f.isIgnore
 }

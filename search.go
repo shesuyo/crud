@@ -6,16 +6,16 @@ import (
 	"strings"
 )
 
-//JoinCon join条件
+// JoinCon join条件
 type JoinCon struct {
 	TableName string
 	Condition string
 }
 
-//JoinCons join条件slice
+// JoinCons join条件slice
 type JoinCons []JoinCon
 
-//HaveTable join条件中是否已经添加了这张表的join
+// HaveTable join条件中是否已经添加了这张表的join
 func (jc JoinCons) HaveTable(tableName string) bool {
 	for _, v := range jc {
 		if v.TableName == tableName {
@@ -25,13 +25,13 @@ func (jc JoinCons) HaveTable(tableName string) bool {
 	return false
 }
 
-//WhereCon where条件
+// WhereCon where条件
 type WhereCon struct {
 	Query string
 	Args  []interface{}
 }
 
-//Search 搜索结构体
+// Search 搜索结构体
 type Search struct {
 	table             *Table
 	fields            []string
@@ -50,13 +50,13 @@ type Search struct {
 	raw   bool
 }
 
-//Clone 克隆一个当前结构体
+// Clone 克隆一个当前结构体
 func (s *Search) Clone() *Search {
 	clone := *s
 	return &clone
 }
 
-//Fields 需要查询的字段
+// Fields 需要查询的字段
 func (s *Search) Fields(args ...string) *Search {
 	if len(args) == 0 {
 		return s
@@ -71,19 +71,19 @@ func (s *Search) Fields(args ...string) *Search {
 	return s
 }
 
-//Where where语法
+// Where where语法
 func (s *Search) Where(query string, values ...interface{}) *Search {
 	s.whereConditions = append(s.whereConditions, WhereCon{Query: query, Args: values})
 	return s
 }
 
-//WhereID id = ?
+// WhereID id = ?
 func (s *Search) WhereID(id interface{}) *Search {
 	s.whereConditions = append(s.whereConditions, WhereCon{Query: s.tableName + ".id = ?", Args: []interface{}{id}})
 	return s
 }
 
-//In in语法
+// In in语法
 func (s *Search) In(field string, args ...interface{}) *Search {
 	//in没有参数的话SQL就会报错
 	if len(args) == 0 {
@@ -103,7 +103,7 @@ func (s *Search) NotIn(field string, args ...interface{}) *Search {
 	return s
 }
 
-//Joins join语法，自动连表。
+// Joins join语法，自动连表。
 func (s *Search) Joins(tablename string, condition ...string) *Search {
 	if len(condition) == 1 {
 		s.joinConditions = append(s.joinConditions, JoinCon{TableName: tablename, Condition: condition[0]})
@@ -121,7 +121,7 @@ func (s *Search) Joins(tablename string, condition ...string) *Search {
 	return s
 }
 
-//OrderBy OrderBy 默认升序
+// OrderBy OrderBy 默认升序
 func (s *Search) OrderBy(field string, isDESC ...bool) *Search {
 	if len(isDESC) > 0 && isDESC[0] {
 		s.orderbyConditions = append(s.orderbyConditions, field+" DESC")
@@ -131,25 +131,25 @@ func (s *Search) OrderBy(field string, isDESC ...bool) *Search {
 	return s
 }
 
-//TableName tableName
+// TableName tableName
 func (s *Search) TableName(name string) *Search {
 	s.tableName = name
 	return s
 }
 
-//Limit LIMIT ?
+// Limit LIMIT ?
 func (s *Search) Limit(limit interface{}) *Search {
 	s.limit = limit
 	return s
 }
 
-//Offset OFFSET ?
+// Offset OFFSET ?
 func (s *Search) Offset(offset interface{}) *Search {
 	s.offset = offset
 	return s
 }
 
-//Group GROUP BY
+// Group GROUP BY
 func (s *Search) Group(field ...string) *Search {
 	s.groupConditions = append(s.groupConditions, field...)
 	return s
@@ -311,22 +311,22 @@ func (s *Search) warpFieldSingel(field string) (warpStr string, tablename string
 
 //结果展示
 
-//RawMap RawMap
+// RawMap RawMap
 func (s *Search) RawMap() RowMap {
 	return s.RowMap()
 }
 
-//RawsMap RawsMap
+// RawsMap RawsMap
 func (s *Search) RawsMap() RowsMap {
 	return s.RowsMap()
 }
 
-//RawsMapInterface RawsMapInterface
+// RawsMapInterface RawsMapInterface
 func (s *Search) RawsMapInterface() RowsMapInterface {
 	return s.RowsMapInterface()
 }
 
-//RowMap RowMap
+// RowMap RowMap
 func (s *Search) RowMap() RowMap {
 	nb := (*s).Clone().Limit(1)
 	query, args := nb.Parse()
@@ -363,37 +363,37 @@ func (s *Search) Explain(debug bool) Explain {
 // 	return s.table.Query(s.Parse()).String()
 // }
 
-//SQLRows SQLRows
+// SQLRows SQLRows
 func (s *Search) SQLRows() *SQLRows {
 	query, args := s.Parse()
 	return s.table.Query(query, args...)
 }
 
-//RowsMap RowsMap
+// RowsMap RowsMap
 func (s *Search) RowsMap() RowsMap {
 	query, args := s.Parse()
 	return s.table.Query(query, args...).RowsMap()
 }
 
-//RowMapInterface RowMapInterface
+// RowMapInterface RowMapInterface
 func (s *Search) RowMapInterface() RowMapInterface {
 	query, args := s.Parse()
 	return s.table.Query(query, args...).RowMapInterface()
 }
 
-//RowsMapInterface RowsMapInterface
+// RowsMapInterface RowsMapInterface
 func (s *Search) RowsMapInterface() RowsMapInterface {
 	query, args := s.Parse()
 	return s.table.Query(query, args...).RowsMapInterface()
 }
 
-//DoubleSlice DoubleSlice
+// DoubleSlice DoubleSlice
 func (s *Search) DoubleSlice() (map[string]int, [][]string) {
 	query, args := s.Parse()
 	return s.table.Query(query, args...).DoubleSlice()
 }
 
-//Int 如果指定字段，则返回指定字段的int值，否则返回第一个字段作为int值返回。
+// Int 如果指定字段，则返回指定字段的int值，否则返回第一个字段作为int值返回。
 func (s *Search) Int(args ...string) int {
 	row := s.RowMap()
 	if len(args) == 0 {
@@ -408,7 +408,7 @@ func (s *Search) Int(args ...string) int {
 	return 0
 }
 
-//String like int
+// String like int
 func (s *Search) String(args ...string) string {
 	row := s.RowMap()
 	if len(args) == 0 {
@@ -421,13 +421,13 @@ func (s *Search) String(args ...string) string {
 	return ""
 }
 
-//Bool Bool
+// Bool Bool
 func (s *Search) Bool(args ...string) bool {
 	row := s.RowMap()
 	return row.Bool(args...)
 }
 
-//Finds 将查询的结构放入到结构体当中
+// Finds 将查询的结构放入到结构体当中
 func (s *Search) Finds(v interface{}) {
 	query, args := s.Parse()
 	s.table.FindAll(v, append([]interface{}{query}, args...)...)

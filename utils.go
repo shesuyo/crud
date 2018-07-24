@@ -21,13 +21,13 @@ var (
 	placeholders = []string{"", "?", "?,?", "?,?,?", "?,?,?,?", "?,?,?,?,?", "?,?,?,?,?,?", "?,?,?,?,?,?,?", "?,?,?,?,?,?,?,?", "?,?,?,?,?,?,?,?,?", "?,?,?,?,?,?,?,?,?,?"}
 )
 
-//SafeMapStringString 安全的map[string]string
+// SafeMapStringString 安全的map[string]string
 type SafeMapStringString struct {
 	m  map[string]string
 	mu sync.RWMutex
 }
 
-//Get Get
+// Get Get
 func (safe *SafeMapStringString) Get(key string) (string, bool) {
 	safe.mu.RLock()
 	val, ok := safe.m[key]
@@ -35,14 +35,14 @@ func (safe *SafeMapStringString) Get(key string) (string, bool) {
 	return val, ok
 }
 
-//Set Set
+// Set Set
 func (safe *SafeMapStringString) Set(key, val string) {
 	safe.mu.Lock()
 	safe.m[key] = val
 	safe.mu.Unlock()
 }
 
-//NewMapStringString 返回一个安全的map[string]string
+// NewMapStringString 返回一个安全的map[string]string
 func NewMapStringString() *SafeMapStringString {
 	safe := new(SafeMapStringString)
 	safe.m = make(map[string]string)
@@ -131,7 +131,7 @@ func ksvs(m map[string]interface{}, keyTail ...string) ([]string, []interface{})
 	return ks, vs
 }
 
-//用于返回对应个数参数,多用于In。
+// 用于返回对应个数参数,多用于In。
 func argslice(l int) string {
 	s := []string{}
 	for i := 0; i < l; i++ {
@@ -140,7 +140,7 @@ func argslice(l int) string {
 	return strings.Join(s, ",")
 }
 
-//structToMap 将结构体转换成map[string]interface{}
+// structToMap 将结构体转换成map[string]interface{}
 func structToMap(v reflect.Value) map[string]interface{} {
 	v = reflect.Indirect(v)
 	t := v.Type()
@@ -178,7 +178,7 @@ func placeholder(n int) string {
 	return strings.Join(holder, ",")
 }
 
-//MapsToCRUDRows convert []map[string]string to crud.RowsMap
+// MapsToCRUDRows convert []map[string]string to crud.RowsMap
 func MapsToCRUDRows(m []map[string]string) RowsMap {
 	rm := RowsMap{}
 	for _, v := range m {

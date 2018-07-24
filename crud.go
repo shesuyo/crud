@@ -257,7 +257,7 @@ func (db *DataBase) DB() *sql.DB {
 	return db.db
 }
 
-//Create 根据相应单个结构体进行创建
+// Create 根据相应单个结构体进行创建
 func (db *DataBase) Create(obj interface{}) (int64, error) {
 	//一定要是地址
 	//需要检查Before函数

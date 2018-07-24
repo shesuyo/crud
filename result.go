@@ -26,22 +26,22 @@ type SQLRows struct {
 
 //为了兼容以前的代码这里设置四个转发的函数，以后肯定会慢慢移除掉的。
 
-//RawMapInterface RowMapInterface
+// RawMapInterface RowMapInterface
 func (r *SQLRows) RawMapInterface() RowMapInterface {
 	return r.RowMapInterface()
 }
 
-//RawsMapInterface RowsMapInterface
+// RawsMapInterface RowsMapInterface
 func (r *SQLRows) RawsMapInterface() RowsMapInterface {
 	return r.RowsMapInterface()
 }
 
-//RawsMap RowsMap
+// RawsMap RowsMap
 func (r *SQLRows) RawsMap() RowsMap {
 	return r.RowsMap()
 }
 
-//RawMap RowMap
+// RawMap RowMap
 func (r *SQLRows) RawMap() RowMap {
 	return r.RowMap()
 }
