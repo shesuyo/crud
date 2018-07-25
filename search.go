@@ -428,9 +428,9 @@ func (s *Search) Bool(args ...string) bool {
 }
 
 // Finds 将查询的结构放入到结构体当中
-func (s *Search) Finds(v interface{}) {
+func (s *Search) Finds(v interface{}) error {
 	query, args := s.Parse()
-	s.table.FindAll(v, append([]interface{}{query}, args...)...)
+	return s.table.FindAll(v, append([]interface{}{query}, args...)...)
 }
 
 // //Count 计算这次查询结果的个数
