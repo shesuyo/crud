@@ -352,6 +352,15 @@ func (rm RowsMap) MapIndex(field string) map[string]RowMap {
 	return sr
 }
 
+// MapIndexKV 按照key，val 转换成 map[string]string
+func (rm RowsMap) MapIndexKV(key, val string) map[string]string {
+	ss := make(map[string]string, 0)
+	for _, r := range rm {
+		ss[r[key]] = r[val]
+	}
+	return ss
+}
+
 // MapIndexs 按照指定field划分成map[string]RowsMap
 func (rm RowsMap) MapIndexs(field string) map[string]RowsMap {
 	sr := make(map[string]RowsMap, len(rm))
@@ -359,6 +368,28 @@ func (rm RowsMap) MapIndexs(field string) map[string]RowsMap {
 		sr[r[field]] = append(sr[r[field]], r)
 	}
 	return sr
+}
+
+// Vals vals
+type Vals []string
+
+// Contains vals weather contains s
+func (vs Vals) Contains(s string) bool {
+	for _, v := range vs {
+		if v == s {
+			return true
+		}
+	}
+	return false
+}
+
+// MapIndexsKV 按k,v划分成map[string]Vals
+func (rm RowsMap) MapIndexsKV(key, val string) map[string]Vals {
+	sv := make(map[string]Vals)
+	for _, r := range rm {
+		sv[r[key]] = append(sv[r[key]], r[val])
+	}
+	return sv
 }
 
 // Filter 过滤指定字段
