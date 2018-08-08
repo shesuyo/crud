@@ -196,7 +196,7 @@ func (t *Table) Delete(m map[string]interface{}) (int64, error) {
 	if t.tableColumns[t.tableName].HaveColumn(IsDeleted) {
 		return t.Exec(fmt.Sprintf("UPDATE `%s` SET is_deleted = '1', deleted_at = '%s' WHERE %s", t.tableName, time.Now().Format(TimeFormat), strings.Join(ks, "AND")), vs...).RowsAffected()
 	}
-	return t.Exec(fmt.Sprintf("DELETE FROM %s WHERE %s", t.tableName, strings.Join(ks, "AND")), vs...).RowsAffected()
+	return t.Exec(fmt.Sprintf("DELETE FROM `%s` WHERE %s", t.tableName, strings.Join(ks, "AND")), vs...).RowsAffected()
 }
 
 // Clone 克隆
