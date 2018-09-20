@@ -118,7 +118,16 @@ func (t *Table) Creates(ms []map[string]interface{}) (int, error) {
 	return int(rows), err
 }
 
-//Reads 查找
+// Read 查找单条数据
+func (t *Table) Read(m map[string]interface{}) RowMap {
+	rs := t.Reads(m)
+	if len(rs) > 0 {
+		return rs[0]
+	}
+	return RowMap{}
+}
+
+// Reads 查找多条数据
 func (t *Table) Reads(m map[string]interface{}) RowsMap {
 	if t.tableColumns[t.tableName].HaveColumn(IsDeleted) {
 		m[IsDeleted] = 0
@@ -126,14 +135,6 @@ func (t *Table) Reads(m map[string]interface{}) RowsMap {
 	//SELECT * FROM address WHERE id = 1 AND uid = 27
 	ks, vs := ksvs(m, " = ? ")
 	return t.Query(fmt.Sprintf("SELECT * FROM %s WHERE %s", t.tableName, strings.Join(ks, "AND")), vs...).RowsMap()
-}
-
-func (t *Table) Read(m map[string]interface{}) RowMap {
-	rs := t.Reads(m)
-	if len(rs) > 0 {
-		return rs[0]
-	}
-	return RowMap{}
 }
 
 // Update 更新

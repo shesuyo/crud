@@ -888,6 +888,10 @@ func (r *SQLRows) RowsMap() RowsMap {
 		return rs
 	}
 	cols, _ := r.rows.Columns()
+	// ts, _ := r.rows.ColumnTypes()
+	// for _, t := range ts {
+	// 	fmt.Printf("%#v\n", *t)
+	// }
 
 	for r.rows.Next() {
 		//type RawBytes []byte

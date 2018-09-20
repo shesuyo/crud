@@ -11,24 +11,24 @@ import (
 	"strings"
 	"sync"
 
-	_ "github.com/go-sql-driver/mysql" //
+	_ "github.com/go-sql-driver/mysql" //mysql driver
 )
 
 // 变量
 var (
-	TimeFormat = "2006-01-02 15:04:05" //用于编程经常遇到的时间
+	TimeFormat = "2006-01-02 15:04:05"
 
 	//错误
 	ErrExec = errors.New("执行错误")
 	ErrArgs = errors.New("参数错误")
 
 	ErrInsertRepeat = errors.New("重复插入")
-	ErrSQLSyncPanic = errors.New("SQL语句异常")
+	ErrSQLSyntaxc   = errors.New("SQL语法错误")
 	ErrInsertData   = errors.New("插入数据库异常")
 	ErrNoUpdateKey  = errors.New("没有更新主键")
 
-	ErrMustNeedAddr   = errors.New("必须为值引用")
-	ErrMustNeedSlice  = errors.New("必须为Slice")
+	ErrMustBeAddr     = errors.New("必须为值引用")
+	ErrMustBeSlice    = errors.New("必须为Slice")
 	ErrMustNeedID     = errors.New("必须要有ID")
 	ErrNotSupportType = errors.New("不支持类型")
 )
@@ -266,7 +266,7 @@ func (db *DataBase) Create(obj interface{}) (int64, error) {
 	//TODO 一次性创建整个嵌套结构体
 	v := reflect.ValueOf(obj)
 	if v.Kind() != reflect.Ptr {
-		return 0, ErrMustNeedAddr
+		return 0, ErrMustBeAddr
 	}
 	beforeFunc := v.MethodByName(BeforeCreate)
 	afterFunc := v.MethodByName(AfterCreate)
@@ -306,15 +306,15 @@ func (db *DataBase) Create(obj interface{}) (int64, error) {
 	return id, err
 }
 
-//Creates 根据相应多个结构体进行创建
+// Creates 根据相应多个结构体进行创建
 func (db *DataBase) Creates(objs interface{}) ([]int64, error) {
 	ids := []int64{}
 	v := reflect.ValueOf(objs)
 	if v.Kind() != reflect.Ptr {
-		return ids, ErrMustNeedAddr
+		return ids, ErrMustBeAddr
 	}
 	if v.Elem().Kind() != reflect.Slice {
-		return ids, ErrMustNeedSlice
+		return ids, ErrMustBeSlice
 	}
 
 	for i, num := 0, v.Elem().Len(); i < num; i++ {
@@ -329,12 +329,12 @@ func (db *DataBase) Creates(objs interface{}) ([]int64, error) {
 	return ids, nil
 }
 
-//Update Update
+// Update Update
 func (db *DataBase) Update(obj interface{}) error {
 	//根据ID进行Update
 	v := reflect.ValueOf(obj)
 	if v.Kind() != reflect.Ptr {
-		return ErrMustNeedAddr
+		return ErrMustBeAddr
 	}
 	beforeFunc := v.MethodByName(BeforeUpdate)
 	afterFunc := v.MethodByName(AfterUpdate)
@@ -354,14 +354,14 @@ func (db *DataBase) Update(obj interface{}) error {
 	return nil
 }
 
-//Updates Updates
+// Updates Updates
 func (db *DataBase) Updates(objs interface{}) error {
 	v := reflect.ValueOf(objs)
 	if v.Kind() != reflect.Ptr {
-		return ErrMustNeedAddr
+		return ErrMustBeAddr
 	}
 	if v.Elem().Kind() != reflect.Slice {
-		return ErrMustNeedSlice
+		return ErrMustBeSlice
 	}
 
 	for i, num := 0, v.Elem().Len(); i < num; i++ {
@@ -373,11 +373,11 @@ func (db *DataBase) Updates(objs interface{}) error {
 	return nil
 }
 
-//Delete Delete
+// Delete Delete
 func (db *DataBase) Delete(obj interface{}) (int64, error) {
 	v := reflect.ValueOf(obj)
 	if v.Kind() != reflect.Ptr {
-		return 0, ErrMustNeedAddr
+		return 0, ErrMustBeAddr
 	}
 	beforeFunc := v.MethodByName(BeforeDelete)
 	afterFunc := v.MethodByName(AfterDelete)
@@ -397,15 +397,15 @@ func (db *DataBase) Delete(obj interface{}) (int64, error) {
 	return count, err
 }
 
-//Deletes Deletes
+// Deletes Deletes
 func (db *DataBase) Deletes(objs interface{}) (int64, error) {
 	var affCount int64
 	v := reflect.ValueOf(objs)
 	if v.Kind() != reflect.Ptr {
-		return 0, ErrMustNeedAddr
+		return 0, ErrMustBeAddr
 	}
 	if v.Elem().Kind() != reflect.Slice {
-		return 0, ErrMustNeedSlice
+		return 0, ErrMustBeSlice
 	}
 
 	for i, num := 0, v.Elem().Len(); i < num; i++ {
@@ -503,7 +503,7 @@ func (db *DataBase) Find(obj interface{}, args ...interface{}) error {
 	)
 
 	if v.Kind() != reflect.Ptr {
-		return ErrMustNeedAddr
+		return ErrMustBeAddr
 	}
 
 	if len(args) > 0 {
