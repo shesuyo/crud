@@ -40,6 +40,7 @@ type Search struct {
 	whereConditions   []WhereCon
 	orderbyConditions []string
 	groupConditions   []string
+	havingConditions  []WhereCon
 	with              string
 	having            string
 	limit             interface{}
@@ -155,14 +156,13 @@ func (s *Search) Group(field ...string) *Search {
 	return s
 }
 
-// Parse 将各个条件整合成可以查询的SQL语句和参数
-// SELECT COUNT(*) AS total,cid
-// FROM report
-// WHERE id > 1000000
-// GROUP BY cid
-// ORDER BY COUNT(*)
-// LIMIT 1
-// OFFSET 1
+// Having having
+func (s *Search) Having(query string, args ...interface{}) *Search {
+	s.havingConditions = append(s.havingConditions, WhereCon{Query: query, Args: args})
+	return s
+}
+
+// Parse Parse
 func (s *Search) Parse() (string, []interface{}) {
 	if s.raw == true {
 		return s.query, s.args
@@ -172,8 +172,9 @@ func (s *Search) Parse() (string, []interface{}) {
 		joins        string
 		paddingwhere string
 		wheres       []string
-		orderby      string
 		groupby      string
+		having       string
+		orderby      string
 		limit        string
 		offset       string
 	)
@@ -204,11 +205,19 @@ func (s *Search) Parse() (string, []interface{}) {
 		wheres = append(wheres, wherecon.Query)
 		s.args = append(s.args, wherecon.Args...)
 	}
-	if len(s.orderbyConditions) > 0 {
-		orderby = " ORDER BY " + strings.Join(s.orderbyConditions, ",")
-	}
 	if len(s.groupConditions) > 0 {
 		groupby = " GROUP BY " + strings.Join(s.groupConditions, ",")
+	}
+	if len(s.havingConditions) > 0 {
+		hcs := []string{}
+		for _, c := range s.havingConditions {
+			hcs = append(hcs, c.Query)
+			s.args = append(s.args, c.Args...)
+		}
+		having = " HAVING " + strings.Join(hcs, " AND ")
+	}
+	if len(s.orderbyConditions) > 0 {
+		orderby = " ORDER BY " + strings.Join(s.orderbyConditions, ",")
 	}
 	if s.limit != nil {
 		limit = " LIMIT ?"
@@ -218,7 +227,18 @@ func (s *Search) Parse() (string, []interface{}) {
 		offset = " OFFSET ?"
 		s.args = append(s.args, s.offset)
 	}
-	s.query = fmt.Sprintf("SELECT %s FROM `%s`%s%s%s%s%s%s%s", fields, s.tableName, joins, paddingwhere, strings.Join(wheres, " AND "), groupby, orderby, limit, offset)
+	s.query = fmt.Sprintf("SELECT %s FROM `%s`%s%s%s%s%s%s%s%s",
+		fields,
+		s.tableName,
+		joins,
+		paddingwhere,
+		strings.Join(wheres, " AND "),
+		groupby,
+		having,
+		orderby,
+		limit,
+		offset,
+	)
 	// 如果table进行搜索了(table.RowsMap())，那么table下面所有的条件都会一直使用之前的搜索语句。
 	// s.raw = true
 	return s.query, s.args

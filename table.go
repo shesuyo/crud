@@ -378,6 +378,11 @@ func (t *Table) Group(fields ...string) *Table {
 	return t.Clone().Search.Group(fields...).table
 }
 
+// Having Having
+func (t *Table) Having(query string, args ...interface{}) *Table {
+	return t.Clone().Search.Having(query, args...).table
+}
+
 // Count count
 func (t *Table) Count() int {
 	s := t.Clone().Search
