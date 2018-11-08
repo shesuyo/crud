@@ -545,10 +545,42 @@ func (rm RowsMap) GroupByField(field string) []RowsMapGroup {
 type RowsWrap struct {
 	Key string   `json:"key"`
 	Val []RowMap `json:"val"`
+
+	less func(i, j int) bool
 }
 
 // RowsWraps []RowsWrap
 type RowsWraps []RowsWrap
+
+// RowsWrapsSortFunc RowsWrapsSort sort func
+type RowsWrapsSortFunc func(rm *RowsWraps, i, j int) bool
+
+// RowsWrapsSort sort for RowsWraps
+type RowsWrapsSort struct {
+	rm *RowsWraps
+	f  RowsWrapsSortFunc
+}
+
+// Len len
+func (rs RowsWrapsSort) Len() int {
+	return len(*(rs.rm))
+}
+
+// Swap swap
+func (rs RowsWrapsSort) Swap(i, j int) {
+	(*(rs.rm))[i], (*(rs.rm))[j] = (*(rs.rm))[j], (*(rs.rm))[i]
+}
+
+// Less Less
+func (rs RowsWrapsSort) Less(i, j int) bool {
+	return rs.f(rs.rm, i, j)
+}
+
+// Sort Sort
+func (rw *RowsWraps) Sort(f RowsWrapsSortFunc) {
+	rf := RowsWrapsSort{rm: rw, f: f}
+	sort.Sort(rf)
+}
 
 // HaveKey return weather have this key
 func (rw RowsWraps) HaveKey(key string) bool {
@@ -570,7 +602,11 @@ func (rw *RowsWraps) Set(key string, val RowMap) {
 			}
 		}
 	} else {
-		(*rw) = append((*rw), RowsWrap{Key: key, Val: []RowMap{val}})
+		if val == nil {
+			(*rw) = append((*rw), RowsWrap{Key: key, Val: make(RowsMap, 0, 2)})
+		} else {
+			(*rw) = append((*rw), RowsWrap{Key: key, Val: []RowMap{val}})
+		}
 	}
 }
 
